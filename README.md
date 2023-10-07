@@ -35,7 +35,7 @@ Para usar o GC Tools, siga as instruções detalhadas em nossa documentação of
 - Mateus Melo (mateusmelosiqueira@gmail.com)
 
 - Remis Balaniuk (remis.balaniuk@yahoo.com.br)
-- 
+  
 ## Contribuição
 
 Se você deseja contribuir com o projeto GC Tools, siga estas etapas:
