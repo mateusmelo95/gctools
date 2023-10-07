@@ -4,7 +4,7 @@
 
 ## Descrição
 
-O GC Tools é um conjunto de ferramentas para gerenciamento de projetos de código aberto. Nossa missão é facilitar a colaboração e o controle de versão em equipes de desenvolvimento.
+O GC Tools é um plugin Qgis feito para a utilização de ia para detecção de objetos, amostragem e validação de modelo. Nossa missão é facilitar a colaboração e possibilitar a geração de dados espaciais de forma mais automatizada. O GC Tools foi idealizado no projeto Geocontrole, que é um projeto público-privado financiado com o propósito de desenvolvimento de métodos e insigths sobre temas voltados a monitoramento e gestão com uso de dados.
 
 ## Funcionalidades Principais
 
