@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>548</width>
-    <height>493</height>
+    <width>627</width>
+    <height>553</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -65,20 +65,11 @@
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+        <widget class="QPushButton" name="pb_table">
+         <property name="text">
+          <string>TABLE</string>
          </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Fixed</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>100</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -431,8 +422,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>548</width>
-     <height>21</height>
+     <width>627</width>
+     <height>26</height>
     </rect>
    </property>
   </widget>

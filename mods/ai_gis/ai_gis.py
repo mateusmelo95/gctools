@@ -25,13 +25,14 @@ import os
 import sys 
 sys.path.append(os.path.join(os.path.dirname(__file__),'lib'))
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
+from qgis.PyQt.QtGui import QIcon, QColor, QPixmap
+from qgis.PyQt.QtWidgets import QAction, QFileDialog, QTableWidget, QTableWidgetItem
 #from PyQt5.QtCore import QVariant
 # Initialize Qt resources from file resources.py
 #from .resources import *
 # Import the code for the dialog
 from .ai_gis_dialog import AIGISDialog
+from .process_table_dialog import PROCTABLEDialog
 import os.path
 from yolov5 import YOLOv5
 
@@ -193,10 +194,10 @@ class WorkerInference(QThread):
                         QgsProject.instance().addMapLayers([self.polygon])
                         if (self.dlg.cb_pontos.isChecked()):
                             QgsProject.instance().addMapLayers([self.point])
+                #PROCESSAR DIRETÓRIO
                 elif (self.file_folder_status == 0):
                     images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
 
-                    # @staticmethod
                     def job(img):
                         print(os.path.join(self.img_dir, img))
                         image = read_image(os.path.join(self.img_dir, img))
@@ -222,21 +223,11 @@ class WorkerInference(QThread):
 
                     process = []
                     for i,img in images:
-                        # p = multiprocessing.Process(target=worker, args=(img,))
-                        # processes.append(p)
-                        # p.start()
+         
                         job(img)
 
-                        #
-                        # for process in processes:
-                        #     process.join()
-                        # if not hasattr(sys, 'argv'):
-                        #     sys.argv = ['']
-                        # pool = multiprocessing.Pool(2)
-                        # result_ = pool.map(func=job, iterable=images, chunksize=1)
-                        # pool.close()
-                        # pool.join()
-
+   
+    
 
                         if (self.dlg.cb_poligonos.isChecked()):
                             object_prediction_list = result["object_prediction_list"]
@@ -358,6 +349,9 @@ class AIGIS:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = self.gctools.plugin_dir
+        self.proc_table_dlg = PROCTABLEDialog()
+        self.proc_table_dlg.table.setRowCount(0)
+        
     def updateBar(self,data):
         self.dlg.gcbar.value = int(data[0])
     def setworker(self):
@@ -374,9 +368,50 @@ class AIGIS:
         self.file_folder_status = 0
         self.img_dir = QFileDialog.getExistingDirectory()
         self.dlg.line_file.setText(self.img_dir)
+        #fill table
+        images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
+        
+        self.proc_table_dlg.show()
+        for x,im in enumerate(images):
+            row = self.proc_table_dlg.table.rowCount()
+            
+            color_pend = QColor()
+            color_pend.setRgb(89, 141, 214)
+            icon_pend = QIcon()
+            icon_pend.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "pend.png")), QIcon.Normal, QIcon.Off)
+            
+            item_id = QTableWidgetItem()
+            item_id.setCheckState(2)
+            item_id.setText(str(x))
+            #item_id.setBackground(color_pend)
+            #item_id.setIcon(icon_pend)
+ 
+            item_img_dir = QTableWidgetItem()
+            item_img_dir.setText(str(self.img_dir))
+            #item_img_dir.setBackground(color_pend)
+            #item_img_dir.setIcon(icon_pend)
+            
+            item_img = QTableWidgetItem()
+            item_img.setText(str(im))
+            #item_img.setBackground(color_pend)
+            #item_img.setIcon(icon_pend)
+            
+            item_proc = QTableWidgetItem()
+            item_proc.setText(str("PEND"))
+            item_proc.setBackground(color_pend)
+            item_proc.setIcon(icon_pend)
+            
+            
+            self.proc_table_dlg.table.insertRow(row)
+            self.proc_table_dlg.table.setItem(row, 0, item_id) #inscricao
+            self.proc_table_dlg.table.setItem(row, 1, item_img_dir) #inscricao
+            self.proc_table_dlg.table.setItem(row, 2, item_img) #inscricao
+            self.proc_table_dlg.table.setItem(row, 3, item_proc) #inscricao
+        
+        
 
     def draw_results(self):
-
+        pass
     def create_results_layers(self):
         self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'torres_a',
                                       "memory")
