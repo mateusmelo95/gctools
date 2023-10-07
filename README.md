@@ -6,12 +6,6 @@
 
 O GC Tools é um conjunto de ferramentas para gerenciamento de projetos de código aberto. Nossa missão é facilitar a colaboração e o controle de versão em equipes de desenvolvimento.
 
-## Autores
-
-- Mateus Melo (mateusmelosiqueira@gmail.com)
-
-- Remis Balaniuk (remis.balaniuk@yahoo.com.br)
-
 ## Funcionalidades Principais
 
 - Controle de versão
@@ -36,6 +30,12 @@ pip install sahi
 
 Para usar o GC Tools, siga as instruções detalhadas em nossa documentação oficial: [Documentação do GC Tools](https://gctools.readthedocs.io)
 
+## Autores
+
+- Mateus Melo (mateusmelosiqueira@gmail.com)
+
+- Remis Balaniuk (remis.balaniuk@yahoo.com.br)
+- 
 ## Contribuição
 
 Se você deseja contribuir com o projeto GC Tools, siga estas etapas:
