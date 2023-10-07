@@ -1,6 +1,3 @@
-Claro, aqui está o README.md para o projeto "GC Tools" com base no exemplo que você forneceu para o KivyMD:
-
-```markdown
 # GC Tools 1.0
 
 ![Logo do GC Tools](logo-gctools.png)
@@ -65,7 +62,3 @@ Agradecemos antecipadamente por suas contribuições!
 ## Licença
 
 O GC Tools é distribuído sob a licença [Nome da Licença](LICENSE.md). Consulte o arquivo [LICENSE.md](LICENSE.md) para obter detalhes sobre os termos de uso.
-
-```
-
-Lembre-se de substituir "Logo do GC Tools", "mateusmelosiqueira@gmail.com", "remis.balaniuk@yahoo.com.br", URLs e outros detalhes pelos detalhes reais do seu projeto GC Tools. Esta versão do README.md inclui a estrutura de controle de versão "1.0" e a estrutura para o link do YouTube.
