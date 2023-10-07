@@ -8,15 +8,9 @@ O GC Tools é um conjunto de ferramentas para gerenciamento de projetos de códi
 
 ## Autores
 
-- Mateus Melo
-  - Email: mateusmelosiqueira@gmail.com
-  - LinkedIn: [Mateus Melo](https://www.linkedin.com/in/mateusmelo)
-  - YouTube: [Mateus Melo's YouTube Channel](https://www.youtube.com/mateusmelodev)
+- Mateus Melo (mateusmelosiqueira@gmail.com)
 
-- Remis Balaniuk
-  - Email: remis.balaniuk@yahoo.com.br
-  - LinkedIn: [Remis Balaniuk](https://www.linkedin.com/in/remisbalaniuk)
-  - YouTube: [Remis Balaniuk's YouTube Channel](https://www.youtube.com/remisbalaniuk)
+- Remis Balaniuk (remis.balaniuk@yahoo.com.br)
 
 ## Funcionalidades Principais
 
@@ -28,13 +22,15 @@ O GC Tools é um conjunto de ferramentas para gerenciamento de projetos de códi
 
 ## Instalação
 
-Você pode instalar o GC Tools 1.0 executando o seguinte comando:
+Você pode instalar o GC Tools 1.0 executando o seguinte comando no propt do OSGeoShell:
+1) Baixar o .zip do projeto;
+2) No Qgis, vá até "Complementos" > "Gerenciar e instalar" > "Instalar a partir do zip" e instale o gctools baixado;
+3) Certifique-se que o complemento está habilitado na lista de complementos.
 
 ```bash
-pip install gctools==1.0
+pip install yolov5
+pip install sahi
 ```
-
-Certifique-se de que você tem o Python configurado corretamente em seu ambiente.
 
 ## Uso
 
@@ -50,15 +46,13 @@ Se você deseja contribuir com o projeto GC Tools, siga estas etapas:
 4. Faça push para a branch (`git push origin feature/sua-feature`)
 5. Abra um Pull Request
 
-Agradecemos antecipadamente por suas contribuições!
 
 ## Suporte
 
 - Email: suporte@gctools.com
-- Twitter: [@gctools](https://twitter.com/gctools)
-- Facebook: [GC Tools](https://www.facebook.com/gctools)
+- LinkdIn: (https://www.linkedin.com/in/mateus-melo-siqueira-91722a265)
 - YouTube: [![YouTube](https://img.shields.io/static/v1?label=subscribe&logo=youtube&logoColor=ff0000&color=brightgreen&message=2k)](https://www.youtube.com/c/KivyMD)
 
 ## Licença
 
-O GC Tools é distribuído sob a licença [Nome da Licença](LICENSE.md). Consulte o arquivo [LICENSE.md](LICENSE.md) para obter detalhes sobre os termos de uso.
+The GC Tools é is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License. 
