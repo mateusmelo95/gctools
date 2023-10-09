@@ -205,8 +205,8 @@ class WorkerInference(QThread):
                             overlap_width_ratio=float(self.overlap)
                         )
 
-
-                        object_prediction_list = result["object_prediction_list"]
+                        #object_prediction_list = result["object_prediction_list"]
+                        object_prediction_list = result.object_prediction_list
 
 
                         for pred in object_prediction_list:
@@ -221,16 +221,20 @@ class WorkerInference(QThread):
                             ymin = box[1]
                             xmax = xmin + box[2]
                             ymax = ymin + box[3]
-                            x1, y1 = self.pixel2coord(self.img_dir, xmin, ymin)
-                            x2, y2 = self.pixel2coord(self.img_dir, xmax, ymin)
-                            x3, y3 = self.pixel2coord(self.img_dir, xmax, ymax)
-                            x4, y4 = self.pixel2coord(self.img_dir, xmin, ymax)
+                            x1, y1 = self.pixel2coord(os.path.join(self.img_dir, img), xmin, ymin)
+                            x2, y2 = self.pixel2coord(os.path.join(self.img_dir, img), xmax, ymin)
+                            x3, y3 = self.pixel2coord(os.path.join(self.img_dir, img), xmax, ymax)
+                            x4, y4 = self.pixel2coord(os.path.join(self.img_dir, img), xmin, ymax)
                             # print(self.pixel2coord(self.img_dir,0,0))
 
                             res = {'x1': x1,
                                    'y1': y1,
                                    'x2': x2,
                                    'y2': y2,
+                                   'x3': x3,
+                                   'y3': y3,
+                                   'x4': x4,
+                                   'y4': y4,
                                    'id':i,
                                    'classe':classe,
                                    'classe_id':classe_id,
@@ -240,7 +244,8 @@ class WorkerInference(QThread):
 
 
                             # print(geom)
-
+                        print(i)
+                        print([int(100*i/total)])
                         self.up_list.emit([int(100*i/total)])
 
 
@@ -311,8 +316,11 @@ class AIGIS:
 
         
     def updateBar(self,data):
+        print(data)
         self.dlg.gcbar_geral.value = int(data[0])
     def setworker(self):
+
+        self.create_results_layers()
         #get images
         images = []
         for row in range(0, self.dlg.table.rowCount()):
@@ -366,10 +374,10 @@ class AIGIS:
                                                  is_pontos,
                                                  is_poligonos)
 
-        self.worker_inferencer.up_list.triggered.connect(self.updateBar)
-        self.worker_inferencer.results.triggered.connect(self.addfeature2layer)
+        self.worker_inferencer.up_list.connect(self.updateBar)
+        self.worker_inferencer.results.connect(self.addfeature2layer)
         self.worker_inferencer.run()
-        self.create_results_layers()
+
 
     def getsize(self):
         if (self.dlg.cb_size == '1280'):
@@ -452,16 +460,16 @@ class AIGIS:
 
         raster = gdal.Open(os.path.join(self.img_dir, images[0]),gdal.GA_ReadOnly)
         proj = osr.SpatialReference(wkt=raster.GetProjection())
-        epsg = int(proj.GetAttrValue('AUTHORITY', 1))
-        self.dlg.ln_srid.setText(str(epsg))
+        self.epsg = int(proj.GetAttrValue('AUTHORITY', 1))
+        self.dlg.ln_srid.setText(str(self.epsg))
 
 
     def create_results_layers(self):
-        self.srid = int(self.dlg.ln_srid.currentText())
+        self.srid = int(self.dlg.ln_srid.displayText())
 
-        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'poligonos_a',
+        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(self.epsg), 'poligonos_a',
                                       "memory")
-        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(epsg), 'pontos_p',
+        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(self.epsg), 'pontos_p',
                                     "memory")
         self.pr = self.polygon.dataProvider()
         self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
@@ -488,6 +496,10 @@ class AIGIS:
         y1 = data[0]['y1']
         x2 = data[0]['x2']
         y2 = data[0]['y2']
+        x3 = data[0]['x3']
+        y3 = data[0]['y3']
+        x4 = data[0]['x4']
+        y4 = data[0]['y4']
 
         i = data[0]['id']
         classe = data[0]['classe']
