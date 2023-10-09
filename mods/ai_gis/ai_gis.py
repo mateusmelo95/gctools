@@ -26,13 +26,13 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__),'lib'))
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon, QColor, QPixmap
-from qgis.PyQt.QtWidgets import QAction, QFileDialog, QTableWidget, QTableWidgetItem
+from qgis.PyQt.QtWidgets import QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout
 #from PyQt5.QtCore import QVariant
 # Initialize Qt resources from file resources.py
 #from .resources import *
 # Import the code for the dialog
 from .ai_gis_dialog import AIGISDialog
-from .process_table_dialog import PROCTABLEDialog
+
 import os.path
 from yolov5 import YOLOv5
 
@@ -56,13 +56,21 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import multiprocessing
 
 class WorkerInference(QThread):
-    def __init__(self, plugin_dir, iface, cls_main):
+    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos):
         QThread.__init__(self)
         self.stp = False
         self.plugin_dir = plugin_dir
-        self.iface = iface
-        self.aigis = cls_main
-        self.file_folder_status = self.aigis.file_folder_status
+        self.file_folder_status = file_folder_status
+        self.img_dir = img_dir
+        self.images = images
+        self.img_size = img_size
+        self.is_slice = is_slice
+        self.confidence = confidence
+        self.overlap = overlap
+        self.weight = weight
+        self.is_pontos = is_pontos
+        self.is_poligonos = is_poligonos
+
 
     up_list = pyqtSignal(list)
     results = pyqtSignal(list)
@@ -70,26 +78,16 @@ class WorkerInference(QThread):
         self.inference()
 
     def inference(self):
+        print("ok")
         if not self.stp:
             # set model params
             # model_path = "yolov5/weights/yolov5s.pt" # it automatically downloads yolov5s model to given path
 
-            self.model_path = os.path.join(self.plugin_dir, 'mods', 'ai_gis', 'weights')
-            print(self.model_path)
+
             self.device = "cpu"  # or "cpu"
-            self.weight = None
-            # init yolov5 model
-            if (self.dlg.cb_tipo.currentText() == 'Classes Gerais (COCO Dataset)'):
-                self.weight = os.path.join(self.model_path, 'yolov5x6.pt')
-            elif (self.dlg.cb_tipo.currentText() == 'Arvores_10cm'):
-                self.weight = os.path.join(self.model_path, 'arvores_mms_v1.pt')
-            elif (self.dlg.cb_tipo.currentText() == 'Arvores_1m'):
-                self.weight = os.path.join(self.model_path, 'arvores_mms_v2.pt')
-            elif (self.dlg.cb_tipo.currentText() == 'Lixao_24cm'):
-                self.weight = os.path.join(self.model_path, 'lixao_v1.pt')
-            else:
-                return  #
-            if (self.dlg.cb_slice_imagem.isChecked()):
+            #self.weight = None
+
+            if self.is_slice:
                 # detection_model = Yolov5DetectionModel(
                 # model_path=self.weight,
                 # prediction_score_threshold=float(self.dlg.cb_confidence.currentText()),
@@ -98,18 +96,9 @@ class WorkerInference(QThread):
                 detection_model = AutoDetectionModel.from_pretrained(
                     model_type='yolov5',
                     model_path=self.weight,
-                    confidence_threshold=float(self.dlg.cb_confidence.currentText()),
+                    confidence_threshold=float(self.confidence),
                     device="cpu",  # or 'cuda:0'
                 )
-                if (self.dlg.cb_size == '1280'):
-                    # results = self.yolov5.predict(self.img_dir, size=1280)
-                    self.img_size = 1280
-                elif (self.dlg.cb_size == '640'):
-                    # results = self.yolov5.predict(self.img_dir, size=640)
-                    self.img_size = 1280
-                else:
-                    # results = self.yolov5.predict(self.img_dir, size=640)
-                    self.img_size = 640
 
                 if (self.file_folder_status == 1):
                     image = read_image(self.img_dir)
@@ -119,8 +108,8 @@ class WorkerInference(QThread):
                         detection_model,
                         slice_height=self.img_size,
                         slice_width=self.img_size,
-                        overlap_height_ratio=float(self.dlg.cb_overlap.currentText()),
-                        overlap_width_ratio=float(self.dlg.cb_overlap.currentText())
+                        overlap_height_ratio=float(self.overlap),
+                        overlap_width_ratio=float(self.overlap)
                     )
                     if (self.dlg.cb_mostrar_imagem.isChecked()):
                         visualization_result = visualize_object_predictions(
@@ -136,12 +125,12 @@ class WorkerInference(QThread):
                     i = 0
                     if (self.dlg.cb_poligonos.isChecked()):
                         object_prediction_list = result.object_prediction_list
-                        raster = gdal.Open(self.img_dir)
+                        raster = gdal.Open(self.img_dir,gdal.GA_ReadOnly)
                         proj = osr.SpatialReference(wkt=raster.GetProjection())
                         epsg = int(proj.GetAttrValue('AUTHORITY', 1))
-                        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'torres_a',
+                        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'poligonos_a',
                                                       "memory")
-                        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(epsg), 'torres_p',
+                        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(epsg), 'pontos_p',
                                                     "memory")
                         pr = self.polygon.dataProvider()
                         pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
@@ -150,7 +139,9 @@ class WorkerInference(QThread):
                         pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
                                             QgsField("classe_id", QVariant.Int),
                                             QgsField("score", QVariant.Double)])
+
                         fields = self.polygon.fields()
+
                         self.polygon.updateFields()
                         self.polygon.commitChanges()
                         self.polygon.startEditing()
@@ -196,95 +187,63 @@ class WorkerInference(QThread):
                             QgsProject.instance().addMapLayers([self.point])
                 #PROCESSAR DIRETÓRIO
                 elif (self.file_folder_status == 0):
-                    images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
+                    #images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
 
-                    def job(img):
+                    process = []
+                    total = len(self.images)
+                    for i,img in enumerate(self.images):
                         print(os.path.join(self.img_dir, img))
-                        image = read_image(os.path.join(self.img_dir, img))
 
+                        image = read_image(os.path.join(self.img_dir, img))
+                        print("pre slice")
                         result = get_sliced_prediction(
                             image,
                             detection_model,
                             slice_height=self.img_size,
                             slice_width=self.img_size,
-                            overlap_height_ratio=float(self.dlg.cb_overlap.currentText()),
-                            overlap_width_ratio=float(self.dlg.cb_overlap.currentText())
+                            overlap_height_ratio=float(self.overlap),
+                            overlap_width_ratio=float(self.overlap)
                         )
-                        if (self.dlg.cb_mostrar_imagem.isChecked()):
-                            visualization_result = visualize_object_predictions(
-                                image,
-                                object_prediction_list=result["object_prediction_list"],
-                                output_dir=os.path.join(self.plugin_dir, 'temp'),
-                                file_name=img,
-                            )
-                            # Image(os.path.join(self.plugin_dir,'temp','temp_prediction.png'))
-                            img_ = Image.open(os.path.join(self.plugin_dir, 'temp', img) + '.png')
-                            img_.show()
-
-                    process = []
-                    for i,img in images:
-         
-                        job(img)
-
-   
-    
-
-                        if (self.dlg.cb_poligonos.isChecked()):
-                            object_prediction_list = result["object_prediction_list"]
-                            raster = gdal.Open(self.img_dir)
-                            proj = osr.SpatialReference(wkt=raster.GetProjection())
-                            epsg = int(proj.GetAttrValue('AUTHORITY', 1))
 
 
+                        object_prediction_list = result["object_prediction_list"]
 
 
+                        for pred in object_prediction_list:
 
-                            for pred in object_prediction_list:
-                                feat = QgsFeature()
-                                feat.setFields(fields)
-                                feat_p = QgsFeature()
-                                feat_p.setFields(fields)
-                                pred_coco = pred.to_coco_prediction().json
-                                box = pred_coco['bbox']
-                                classe = pred_coco['category_name']
-                                classe_id = pred_coco['category_id']
-                                score = round(pred.score.value, 2)
-                                feat.setAttributes([i, classe, classe_id, score])
-                                feat_p.setAttributes([i, classe, classe_id, score])
-                                xmin = box[0]
-                                ymin = box[1]
-                                xmax = xmin + box[2]
-                                ymax = ymin + box[3]
-                                x1, y1 = self.pixel2coord(self.img_dir, xmin, ymin)
-                                x2, y2 = self.pixel2coord(self.img_dir, xmax, ymin)
-                                x3, y3 = self.pixel2coord(self.img_dir, xmax, ymax)
-                                x4, y4 = self.pixel2coord(self.img_dir, xmin, ymax)
-                                # print(self.pixel2coord(self.img_dir,0,0))
-                                geom = QgsGeometry.fromPolygonXY(
-                                    [[QgsPointXY(x1, y1), QgsPointXY(x2, y2), QgsPointXY(x3, y3),
-                                      QgsPointXY(x4, y4)]])
-                                geom_p = geom.centroid()
-                                feat.setGeometry(geom)
-                                feat_p.setGeometry(geom_p)
-                                pr.addFeatures([feat])
-                                pr_p.addFeatures([feat_p])
-                                self.polygon.updateExtents()
-                                self.point.updateExtents()
-                                res = {'x1': x1,
-                                            'y1': y1,
-                                            'x2': x2,
-                                            'y2': y2
-                                            }
-                                self.results.emit([res])
+                            pred_coco = pred.to_coco_prediction().json
+                            box = pred_coco['bbox']
+                            classe = pred_coco['category_name']
+                            classe_id = pred_coco['category_id']
+                            score = round(pred.score.value, 2)
 
-                                # print(geom)
-                            self.polygon.commitChanges()
-                            self.point.commitChanges()
-                            self.up_list.emit([i])
+                            xmin = box[0]
+                            ymin = box[1]
+                            xmax = xmin + box[2]
+                            ymax = ymin + box[3]
+                            x1, y1 = self.pixel2coord(self.img_dir, xmin, ymin)
+                            x2, y2 = self.pixel2coord(self.img_dir, xmax, ymin)
+                            x3, y3 = self.pixel2coord(self.img_dir, xmax, ymax)
+                            x4, y4 = self.pixel2coord(self.img_dir, xmin, ymax)
+                            # print(self.pixel2coord(self.img_dir,0,0))
 
-                            QgsProject.instance().addMapLayers([self.polygon])
-                            if (self.dlg.cb_pontos.isChecked()):
-                                QgsProject.instance().addMapLayers([self.point])
+                            res = {'x1': x1,
+                                   'y1': y1,
+                                   'x2': x2,
+                                   'y2': y2,
+                                   'id':i,
+                                   'classe':classe,
+                                   'classe_id':classe_id,
+                                   'score': score}
+
+                            self.results.emit([res])
+
+
+                            # print(geom)
+
+                        self.up_list.emit([int(100*i/total)])
+
+
             else:
                 self.yolov5 = YOLOv5(self.weight, self.device)
 
@@ -331,7 +290,7 @@ class WorkerInference(QThread):
             # results.save(save_dir='results/')
 
     def pixel2coord(self, raster_path, x, y):
-        raster = gdal.Open(raster_path)
+        raster = gdal.Open(raster_path,gdal.GA_ReadOnly)
         xoff, a, b, yoff, d, e = raster.GetGeoTransform()
         xp = a * x + b * y + a * 0.5 + b * 0.5 + xoff
         yp = d * x + e * y + d * 0.5 + e * 0.5 + yoff
@@ -349,14 +308,96 @@ class AIGIS:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = self.gctools.plugin_dir
-        self.proc_table_dlg = PROCTABLEDialog()
-        self.proc_table_dlg.table.setRowCount(0)
+
         
     def updateBar(self,data):
-        self.dlg.gcbar.value = int(data[0])
+        self.dlg.gcbar_geral.value = int(data[0])
     def setworker(self):
-        self.worker_inferencer = WorkerInference(self.plugin_dir,self.iface,self)
-        self.worker_inferencer.up_list.connect(self.updateBar)
+        #get images
+        images = []
+        for row in range(0, self.dlg.table.rowCount()):
+            images.append(self.dlg.table.item(row, 2).text())
+            img_dir = self.dlg.table.item(row, 1).text()
+
+        #get model_path
+        self.model_path = os.path.join(self.plugin_dir, 'mods', 'ai_gis', 'weights')
+        print(self.model_path)
+
+        #get weight
+        weight = self.getmodel()
+
+        #get img_size
+        img_size = self.getsize()
+
+        #is sliced
+        if self.dlg.cb_slice_imagem.isChecked():
+            is_slice = 1
+        else:
+            is_slice = 0
+
+        #get pontos
+        if self.dlg.cb_pontos.isChecked():
+            is_pontos = 1
+        else:
+            is_pontos = 0
+
+        #get poligonos
+        if self.dlg.cb_poligonos.isChecked():
+            is_poligonos = 1
+        else:
+            is_poligonos = 0
+
+        #get confidence
+        confidence = float(self.dlg.cb_confidence.currentText())
+
+        #get overlap
+        overlap = float(self.dlg.cb_overlap.currentText())
+
+        #set Worker Thread
+        self.worker_inferencer = WorkerInference(self.plugin_dir,
+                                                 weight,
+                                                 self.file_folder_status,
+                                                 self.img_dir,
+                                                 images,
+                                                 img_size,
+                                                 is_slice,
+                                                 confidence,
+                                                 overlap,
+                                                 is_pontos,
+                                                 is_poligonos)
+
+        self.worker_inferencer.up_list.triggered.connect(self.updateBar)
+        self.worker_inferencer.results.triggered.connect(self.addfeature2layer)
+        self.worker_inferencer.run()
+        self.create_results_layers()
+
+    def getsize(self):
+        if (self.dlg.cb_size == '1280'):
+            # results = self.yolov5.predict(self.img_dir, size=1280)
+            self.img_size = 1280
+        elif (self.dlg.cb_size == '640'):
+            # results = self.yolov5.predict(self.img_dir, size=640)
+            self.img_size = 1280
+        else:
+            # results = self.yolov5.predict(self.img_dir, size=640)
+            self.img_size = 640
+
+        return self.img_size
+
+    def getmodel(self):
+        # init yolov5 model
+        if (self.dlg.cb_tipo.currentText() == 'Classes Gerais (COCO Dataset)'):
+            self.weight = os.path.join(self.model_path, 'yolov5x6.pt')
+        elif (self.dlg.cb_tipo.currentText() == 'Arvores_10cm'):
+            self.weight = os.path.join(self.model_path, 'arvores_mms_v1.pt')
+        elif (self.dlg.cb_tipo.currentText() == 'Arvores_1m'):
+            self.weight = os.path.join(self.model_path, 'arvores_mms_v2.pt')
+        elif (self.dlg.cb_tipo.currentText() == 'Lixao_24cm'):
+            self.weight = os.path.join(self.model_path, 'lixao_v1.pt')
+        else:
+            self.weight = None
+
+        return self.weight
 
     def dir_file(self):
         self.file_folder_status = 1
@@ -366,14 +407,21 @@ class AIGIS:
 
     def dir_folder(self):
         self.file_folder_status = 0
-        self.img_dir = QFileDialog.getExistingDirectory()
+        #self.img_dir = QFileDialog.getExistingDirectory()
+
+        filenames, _ = QFileDialog.getOpenFileNames(
+                                                    None,
+                                                    "QFileDialog.getOpenFileNames()",
+                                                    "",
+                                                    "Tiff (*.tif);;All Files (*);",)
+        self.img_dir = os.path.dirname(filenames[0])
         self.dlg.line_file.setText(self.img_dir)
         #fill table
-        images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
-        
-        self.proc_table_dlg.show()
+        images = [os.path.basename(x) for x in filenames]
+
+        self.dlg.show()
         for x,im in enumerate(images):
-            row = self.proc_table_dlg.table.rowCount()
+            row = self.dlg.table.rowCount()
             
             color_pend = QColor()
             color_pend.setRgb(89, 141, 214)
@@ -383,18 +431,12 @@ class AIGIS:
             item_id = QTableWidgetItem()
             item_id.setCheckState(2)
             item_id.setText(str(x))
-            #item_id.setBackground(color_pend)
-            #item_id.setIcon(icon_pend)
  
             item_img_dir = QTableWidgetItem()
             item_img_dir.setText(str(self.img_dir))
-            #item_img_dir.setBackground(color_pend)
-            #item_img_dir.setIcon(icon_pend)
-            
+
             item_img = QTableWidgetItem()
             item_img.setText(str(im))
-            #item_img.setBackground(color_pend)
-            #item_img.setIcon(icon_pend)
             
             item_proc = QTableWidgetItem()
             item_proc.setText(str("PEND"))
@@ -402,30 +444,72 @@ class AIGIS:
             item_proc.setIcon(icon_pend)
             
             
-            self.proc_table_dlg.table.insertRow(row)
-            self.proc_table_dlg.table.setItem(row, 0, item_id) #inscricao
-            self.proc_table_dlg.table.setItem(row, 1, item_img_dir) #inscricao
-            self.proc_table_dlg.table.setItem(row, 2, item_img) #inscricao
-            self.proc_table_dlg.table.setItem(row, 3, item_proc) #inscricao
-        
-        
+            self.dlg.table.insertRow(row)
+            self.dlg.table.setItem(row, 0, item_id) #id
+            self.dlg.table.setItem(row, 1, item_img_dir) #pasta
+            self.dlg.table.setItem(row, 2, item_img) #imagem
+            self.dlg.table.setItem(row, 3, item_proc) #status
 
-    def draw_results(self):
-        pass
+        raster = gdal.Open(os.path.join(self.img_dir, images[0]),gdal.GA_ReadOnly)
+        proj = osr.SpatialReference(wkt=raster.GetProjection())
+        epsg = int(proj.GetAttrValue('AUTHORITY', 1))
+        self.dlg.ln_srid.setText(str(epsg))
+
+
     def create_results_layers(self):
-        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'torres_a',
+        self.srid = int(self.dlg.ln_srid.currentText())
+
+        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(epsg), 'poligonos_a',
                                       "memory")
-        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(epsg), 'torres_p',
+        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(epsg), 'pontos_p',
                                     "memory")
-        pr = self.polygon.dataProvider()
-        pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+        self.pr = self.polygon.dataProvider()
+        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
                           QgsField("classe_id", QVariant.Int),
                           QgsField("score", QVariant.Double)])
-        pr_p = self.point.dataProvider()
-        pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+        self.pr_p = self.point.dataProvider()
+        self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
                             QgsField("classe_id", QVariant.Int),
                             QgsField("score", QVariant.Double)])
+
+        QgsProject.instance().addMapLayers([self.point])
+        if (self.dlg.cb_poligonos.isChecked()):
+            QgsProject.instance().addMapLayers([self.polygon])
+
+    def addfeature2layer(self, data):
         fields = self.polygon.fields()
+
+        feat = QgsFeature()
+        feat.setFields(fields)
+        feat_p = QgsFeature()
+        feat_p.setFields(fields)
+
+        x1 = data[0]['x1']
+        y1 = data[0]['y1']
+        x2 = data[0]['x2']
+        y2 = data[0]['y2']
+
+        i = data[0]['id']
+        classe = data[0]['classe']
+        classe_id = data[0]['classe_id']
+        score = data[0]['score']
+
+
+        geom = QgsGeometry.fromPolygonXY(
+            [[QgsPointXY(x1, y1), QgsPointXY(x2, y2), QgsPointXY(x3, y3),
+              QgsPointXY(x4, y4)]])
+
+        feat.setAttributes([i, classe, classe_id, score])
+        feat_p.setAttributes([i, classe, classe_id, score])
+
+        geom_p = geom.centroid()
+        feat.setGeometry(geom)
+        feat_p.setGeometry(geom_p)
+        self.pr.addFeatures([feat])
+        self.pr_p.addFeatures([feat_p])
+        self.polygon.updateExtents()
+        self.point.updateExtents()
+
         self.polygon.updateFields()
         self.polygon.commitChanges()
         self.polygon.startEditing()
@@ -440,6 +524,5 @@ class AIGIS:
         self.dlg.pb_dir_folder.clicked.connect(self.dir_folder)
         self.dlg.cb_confidence.setCurrentText('0.80')
         self.file_folder_status = None
-
         # show the dialog
         self.dlg.show()

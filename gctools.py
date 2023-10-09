@@ -39,6 +39,7 @@ from PIL import Image, ImageQt
 from functools import partial
 
 from .mods.ai_gis.ai_gis import AIGIS
+from .mods.about.about_dialog import ABOUTDialog
 from .resources import *
 # Import the code for the dialog
 from .gctools_dialog import GCTOOLSDialog
