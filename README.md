@@ -16,10 +16,11 @@ O GC Tools é um plugin Qgis feito para a utilização de ia para detecção de 
 
 ## Instalação
 
-Você pode instalar o GC Tools 1.0 executando o seguinte comando no propt do OSGeoShell:
 1) Baixar o .zip do projeto;
 2) No Qgis, vá até "Complementos" > "Gerenciar e instalar" > "Instalar a partir do zip" e instale o gctools baixado;
 3) Certifique-se que o complemento está habilitado na lista de complementos.
+
+Você pode instalar o GC Tools 1.0 executando o seguinte comando no propt do OSGeoShell:
 
 ```bash
 pip install yolov5
