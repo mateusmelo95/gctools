@@ -26,12 +26,14 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__),'lib'))
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon, QColor, QPixmap
-from qgis.PyQt.QtWidgets import QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout
+from qgis.PyQt.QtWidgets import QWidget, QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout
 #from PyQt5.QtCore import QVariant
 # Initialize Qt resources from file resources.py
 #from .resources import *
 # Import the code for the dialog
 from .ai_gis_dialog import AIGISDialog
+
+from qgis.core import QgsVectorFileWriter
 
 import os.path
 from yolov5 import YOLOv5
@@ -52,6 +54,7 @@ from qgis.gui import *
 from qgis.utils import *
 from osgeo import osr
 from PyQt5.QtCore import QThread, pyqtSignal
+import sqlite3
 # import osr
 import multiprocessing
 
@@ -422,66 +425,103 @@ class AIGIS:
                                                     "QFileDialog.getOpenFileNames()",
                                                     "",
                                                     "Tiff (*.tif);;All Files (*);",)
-        self.img_dir = os.path.dirname(filenames[0])
-        self.dlg.line_file.setText(self.img_dir)
-        #fill table
-        images = [os.path.basename(x) for x in filenames]
+        if filenames:
+            self.img_dir = os.path.dirname(filenames[0])
+            self.dlg.line_file.setText(self.img_dir)
+            #fill table
+            images = [os.path.basename(x) for x in filenames]
 
-        self.dlg.show()
-        for x,im in enumerate(images):
-            row = self.dlg.table.rowCount()
-            
-            color_pend = QColor()
-            color_pend.setRgb(89, 141, 214)
-            icon_pend = QIcon()
-            icon_pend.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "pend.png")), QIcon.Normal, QIcon.Off)
-            
-            item_id = QTableWidgetItem()
-            item_id.setCheckState(2)
-            item_id.setText(str(x))
- 
-            item_img_dir = QTableWidgetItem()
-            item_img_dir.setText(str(self.img_dir))
+            self.dlg.show()
+            for x,im in enumerate(images):
+                row = self.dlg.table.rowCount()
 
-            item_img = QTableWidgetItem()
-            item_img.setText(str(im))
-            
-            item_proc = QTableWidgetItem()
-            item_proc.setText(str("PEND"))
-            item_proc.setBackground(color_pend)
-            item_proc.setIcon(icon_pend)
-            
-            
-            self.dlg.table.insertRow(row)
-            self.dlg.table.setItem(row, 0, item_id) #id
-            self.dlg.table.setItem(row, 1, item_img_dir) #pasta
-            self.dlg.table.setItem(row, 2, item_img) #imagem
-            self.dlg.table.setItem(row, 3, item_proc) #status
+                color_pend = QColor()
+                color_pend.setRgb(89, 141, 214)
+                icon_pend = QIcon()
+                icon_pend.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "pend.png")), QIcon.Normal, QIcon.Off)
 
-        raster = gdal.Open(os.path.join(self.img_dir, images[0]),gdal.GA_ReadOnly)
-        proj = osr.SpatialReference(wkt=raster.GetProjection())
-        self.epsg = int(proj.GetAttrValue('AUTHORITY', 1))
-        self.dlg.ln_srid.setText(str(self.epsg))
+                item_id = QTableWidgetItem()
+                item_id.setCheckState(2)
+                item_id.setText(str(x))
+
+                item_img_dir = QTableWidgetItem()
+                item_img_dir.setText(str(self.img_dir))
+
+                item_img = QTableWidgetItem()
+                item_img.setText(str(im))
+
+                item_proc = QTableWidgetItem()
+                item_proc.setText(str("PEND"))
+                item_proc.setBackground(color_pend)
+                item_proc.setIcon(icon_pend)
+
+
+                self.dlg.table.insertRow(row)
+                self.dlg.table.setItem(row, 0, item_id) #id
+                self.dlg.table.setItem(row, 1, item_img_dir) #pasta
+                self.dlg.table.setItem(row, 2, item_img) #imagem
+                self.dlg.table.setItem(row, 3, item_proc) #status
+
+            raster = gdal.Open(os.path.join(self.img_dir, images[0]),gdal.GA_ReadOnly)
+            proj = osr.SpatialReference(wkt=raster.GetProjection())
+            self.epsg = int(proj.GetAttrValue('AUTHORITY', 1))
+            self.dlg.ln_srid.setText(str(self.epsg))
 
 
     def create_results_layers(self):
         self.srid = int(self.dlg.ln_srid.displayText())
 
-        self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(self.epsg), 'poligonos_a',
-                                      "memory")
-        self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(self.epsg), 'pontos_p',
-                                    "memory")
-        self.pr = self.polygon.dataProvider()
-        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                          QgsField("classe_id", QVariant.Int),
-                          QgsField("score", QVariant.Double)])
-        self.pr_p = self.point.dataProvider()
-        self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                            QgsField("classe_id", QVariant.Int),
-                            QgsField("score", QVariant.Double)])
+        if self.dlg.cb_memory.isChecked():
+            self.polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(self.epsg), 'poligonos_a',
+                                          "memory")
+            self.point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(self.epsg), 'pontos_p',
+                                        "memory")
+            self.pr = self.polygon.dataProvider()
+            self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                                   QgsField("classe_id", QVariant.Int),
+                                   QgsField("score", QVariant.Double)])
+            self.pr_p = self.point.dataProvider()
+            self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                                     QgsField("classe_id", QVariant.Int),
+                                     QgsField("score", QVariant.Double)])
 
-        QgsProject.instance().addMapLayers([self.point])
-        if (self.dlg.cb_poligonos.isChecked()):
+            QgsProject.instance().addMapLayers([self.point])
+            if (self.dlg.cb_poligonos.isChecked()):
+                QgsProject.instance().addMapLayers([self.polygon])
+        else:
+            output = self.dlg.ln_output.displayText()
+            dir = os.path.dirname(output)
+            name = os.path.basename(output).replace(".shp","")
+            out_a = os.path.join(dir,name+"_p.shp")
+            out_p = os.path.join(dir,name+"_a.shp")
+            polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(self.epsg), name+"_a",
+                                          "memory")
+            point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(self.epsg), name+"_p",
+                                        "memory")
+
+            self.pr = polygon.dataProvider()
+            self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                              QgsField("classe_id", QVariant.Int),
+                              QgsField("score", QVariant.Double)])
+            self.pr_p = point.dataProvider()
+            self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                                QgsField("classe_id", QVariant.Int),
+                                QgsField("score", QVariant.Double)])
+
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.driverName = 'ESRI Shapefile'
+            context = QgsProject.instance().transformContext()
+            # since QGIS 3.20 you should use writeAsVectorFormatV3
+            QgsVectorFileWriter.writeAsVectorFormatV3(polygon, out_a, context, options)
+            QgsVectorFileWriter.writeAsVectorFormatV3(point, out_p, context, options)
+
+
+
+            self.polygon = QgsVectorLayer(out_p, name+"_p.shp", "ogr")
+            self.point = QgsVectorLayer(out_a, name+"_a.shp", "ogr")
+
+            QgsProject.instance().addMapLayers([self.point])
+            #if (self.dlg.cb_poligonos.isChecked()):
             QgsProject.instance().addMapLayers([self.polygon])
 
     def addfeature2layer(self, data):
@@ -529,6 +569,46 @@ class AIGIS:
         self.point.commitChanges()
         self.point.startEditing()
 
+    def saveproject(self):
+        qwidget = QWidget()
+        savedirname, _ = QFileDialog.getSaveFileName(
+            qwidget, "Save project", "", " SQLite (*.sqlite)")
+        if savedirname:
+            conn = sqlite3.connect(savedirname)
+            c = conn.cursor()
+            c.execute('PRAGMA journal_mode=wal')
+
+    def openproject(self):
+        qfd = QFileDialog()
+        filter = "SQLite (*.sqlite)"
+        openeddirname = QFileDialog.getOpenFileName(qfd, "Open project", "", filter)[0]
+
+        if openeddirname:
+            conn = sqlite3.connect(openeddirname)
+            c = conn.cursor()
+            c.execute('PRAGMA journal_mode=wal')
+
+    def setmemoryoutput(self):
+        if self.dlg.cb_memory.isChecked():
+            self.dlg.ln_output.setText("[Memory Output]")
+            self.dlg.pb_salvar.setEnabled(False)
+        else:
+            self.dlg.pb_salvar.setEnabled(True)
+            if len(self.dlg.line_file.displayText())>0:
+                if self.dlg.ln_output.displayText()=='[Memory Output]':
+                    self.dlg.ln_output.setText("")
+                else:
+                    return
+            else:
+                self.dlg.ln_output.setText("")
+
+    def setoutput(self):
+        qwidget = QWidget()
+        savedirname, _ = QFileDialog.getSaveFileName(
+            qwidget, "Save Poligon/Points Shape", "", " Shapefile (*.shp)")
+        if savedirname:
+            print("caminho de saida obtido")
+            self.dlg.ln_output.setText(savedirname)
     def run(self):
         self.dlg = AIGISDialog()
         self.dlg.pb_inference.clicked.connect(self.setworker)
@@ -538,3 +618,7 @@ class AIGIS:
         self.file_folder_status = None
         # show the dialog
         self.dlg.show()
+        self.dlg.actionSalvar.triggered.connect(self.saveproject)
+        self.dlg.actionAbrir.triggered.connect(self.openproject)
+        self.dlg.cb_memory.toggled.connect(self.setmemoryoutput)
+        self.dlg.pb_salvar.clicked.connect(self.setoutput)
