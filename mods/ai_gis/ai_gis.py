@@ -81,29 +81,10 @@ class WorkerInference(QThread):
     def run(self):
         self.inference()
 
-    def savesqliteproc(self):
-        if os.name == 'posix':  # Sistema Unix/Linux
-            username = os.getenv('USER')
-        elif os.name == 'nt':  # Windows
-            username = os.getenv('USERNAME')
-        else:
-            username = None
-        data_hora_atual = datetime.now()
-        conn = sqlite3.connect(self.db)
-        c = conn.cursor()
-        c.execute('PRAGMA journal_mode=wal')
-        c.execute(f"""INSERT INTO procs(date_start,date_finish,status,process,user)
-                     VALUES('{data_hora_atual}',null,'PEND',0,'{username}')""")
-        conn.commit()
-        c.close()
-        conn.close()
 
     def inference(self):
         print("ok")
         if not self.stp:
-
-            #Create proc db
-            self.savesqliteproc()
 
             self.device = "cpu"  # or "cpu"
             #self.weight = None
@@ -385,6 +366,9 @@ class AIGIS:
         #get overlap
         overlap = float(self.dlg.cb_overlap.currentText())
 
+        self.savesqliteproc()
+        self.insertsqlitedata(self.id_proc)
+
         #set Worker Thread
         self.worker_inferencer = WorkerInference(self.plugin_dir,
                                                  weight,
@@ -601,7 +585,6 @@ class AIGIS:
                                           status text,
                                           process integer,
                                           date datetime,
-                                          user text,
                                           FOREIGN KEY(proc_id) REFERENCES procs(id))""")
         c.execute("""CREATE TABLE IF NOT EXISTS procs(
                                              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -651,6 +634,45 @@ class AIGIS:
         if savedirname:
             print("caminho de saida obtido")
             self.dlg.ln_output.setText(savedirname)
+
+    def savesqliteproc(self):
+        if os.name == 'posix':  # Sistema Unix/Linux
+            username = os.getenv('USER')
+        elif os.name == 'nt':  # Windows
+            username = os.getenv('USERNAME')
+        else:
+            username = None
+        data_hora_atual = datetime.now()
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+        c.execute('PRAGMA journal_mode=wal')
+        c.execute(f"""INSERT INTO procs(date_start,date_finish,status,process,user)
+                     VALUES('{data_hora_atual}',null,'PEND',0,'{username}')
+                     RETURNING id""")
+        self.id_proc = c.fetchone()[0]
+        print("id_proc: ",self.id_proc)
+        conn.commit()
+        c.close()
+        conn.close()
+
+    def insertsqlitedata(self, id_proc):
+
+        data_hora_atual = datetime.now()
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+
+        for row in range(0, self.dlg.table.rowCount()):
+            image = self.dlg.table.item(row, 2).text()
+            folder = self.dlg.table.item(row, 1).text()
+            status = self.dlg.table.item(row,3).text()
+
+            c.execute('PRAGMA journal_mode=wal')
+            c.execute(f"""INSERT INTO data_proc(proc_id,folder,image,date,status,process)
+                         VALUES({id_proc},'{folder}','{image}','{data_hora_atual}','{status}',null)""")
+
+        conn.commit()
+        c.close()
+        conn.close()
     def run(self):
         self.dlg = AIGISDialog()
         self.dlg.pb_inference.clicked.connect(self.setworker)
