@@ -59,7 +59,7 @@ import sqlite3
 import multiprocessing
 
 class WorkerInference(QThread):
-    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos, db):
+    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos, db, proc_id):
         QThread.__init__(self)
         self.stp = False
         self.plugin_dir = plugin_dir
@@ -74,17 +74,36 @@ class WorkerInference(QThread):
         self.is_pontos = is_pontos
         self.is_poligonos = is_poligonos
         self.db = db
+        self.proc_id = proc_id
 
 
     up_list = pyqtSignal(list)
     results = pyqtSignal(list)
+
+    def updatesqlitedata(self,id_proces,process,image):
+        data_hora_atual = datetime.now()
+
+        self.c.execute('PRAGMA journal_mode=wal')
+        self.c.execute(f"""UPDATE data_proc
+                             SET date = '{data_hora_atual}',
+                             status = 'FINISHED',
+                             process = '{process}'
+                             WHERE proc_id = {id_proces}
+                             AND image = '{image}'
+                            """)
+
+        self.conn.commit()
+
+
+
     def run(self):
         self.inference()
-
 
     def inference(self):
         print("ok")
         if not self.stp:
+            self.conn = sqlite3.connect(self.db)
+            self.c = self.conn.cursor()
 
             self.device = "cpu"  # or "cpu"
             #self.weight = None
@@ -196,9 +215,9 @@ class WorkerInference(QThread):
                     process = []
                     total = len(self.images)
                     for i,img in enumerate(self.images):
-                        print(os.path.join(self.img_dir, img))
+                        print(os.path.join(self.img_dir[i], img))
 
-                        image = read_image(os.path.join(self.img_dir, img))
+                        image = read_image(os.path.join(self.img_dir[i], img))
                         print("pre slice")
                         result = get_sliced_prediction(
                             image,
@@ -225,10 +244,10 @@ class WorkerInference(QThread):
                             ymin = box[1]
                             xmax = xmin + box[2]
                             ymax = ymin + box[3]
-                            x1, y1 = self.pixel2coord(os.path.join(self.img_dir, img), xmin, ymin)
-                            x2, y2 = self.pixel2coord(os.path.join(self.img_dir, img), xmax, ymin)
-                            x3, y3 = self.pixel2coord(os.path.join(self.img_dir, img), xmax, ymax)
-                            x4, y4 = self.pixel2coord(os.path.join(self.img_dir, img), xmin, ymax)
+                            x1, y1 = self.pixel2coord(os.path.join(self.img_dir[i], img), xmin, ymin)
+                            x2, y2 = self.pixel2coord(os.path.join(self.img_dir[i], img), xmax, ymin)
+                            x3, y3 = self.pixel2coord(os.path.join(self.img_dir[i], img), xmax, ymax)
+                            x4, y4 = self.pixel2coord(os.path.join(self.img_dir[i], img), xmin, ymax)
                             # print(self.pixel2coord(self.img_dir,0,0))
 
                             res = {'x1': x1,
@@ -248,10 +267,10 @@ class WorkerInference(QThread):
 
 
                             # print(geom)
-                        print(i)
-                        print([int(100*i/total)])
-                        self.up_list.emit([int(100*i/total)])
-
+                        print(i+1)
+                        print([int(100*(i+1)/total)])
+                        self.up_list.emit([int(100*(i+1)/total)])
+                        self.updatesqlitedata(self.proc_id,int(100*(i+1)/total),img)
 
             else:
                 self.yolov5 = YOLOv5(self.weight, self.device)
@@ -297,7 +316,8 @@ class WorkerInference(QThread):
 
             # save results into "results/" folder
             # results.save(save_dir='results/')
-
+            self.c.close()
+            self.conn.close()
     def pixel2coord(self, raster_path, x, y):
         raster = gdal.Open(raster_path,gdal.GA_ReadOnly)
         xoff, a, b, yoff, d, e = raster.GetGeoTransform()
@@ -328,9 +348,12 @@ class AIGIS:
         self.create_results_layers()
         #get images
         images = []
+        dirs = []
         for row in range(0, self.dlg.table.rowCount()):
             images.append(self.dlg.table.item(row, 2).text())
             img_dir = self.dlg.table.item(row, 1).text()
+            dirs.append(img_dir)
+
 
         #get model_path
         self.model_path = os.path.join(self.plugin_dir, 'mods', 'ai_gis', 'weights')
@@ -373,7 +396,7 @@ class AIGIS:
         self.worker_inferencer = WorkerInference(self.plugin_dir,
                                                  weight,
                                                  self.file_folder_status,
-                                                 self.img_dir,
+                                                 dirs,
                                                  images,
                                                  img_size,
                                                  is_slice,
@@ -381,7 +404,8 @@ class AIGIS:
                                                  overlap,
                                                  is_pontos,
                                                  is_poligonos,
-                                                 self.db)
+                                                 self.db,
+                                                 self.id_proc)
 
         self.worker_inferencer.up_list.connect(self.updateBar)
         self.worker_inferencer.results.connect(self.addfeature2layer)
@@ -436,7 +460,7 @@ class AIGIS:
             self.dlg.line_file.setText(self.img_dir)
             #fill table
             images = [os.path.basename(x) for x in filenames]
-
+            #dirs = [os.path.dirname(x) for x in filenames]
             self.dlg.show()
             for x,im in enumerate(images):
                 row = self.dlg.table.rowCount()
