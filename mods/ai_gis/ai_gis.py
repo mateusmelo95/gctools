@@ -32,9 +32,9 @@ from qgis.PyQt.QtWidgets import QWidget, QAction, QFileDialog, QTableWidget, QTa
 #from .resources import *
 # Import the code for the dialog
 from .ai_gis_dialog import AIGISDialog
-
+from qgis.core import QgsExpressionContextUtils, QgsProject
 from qgis.core import QgsVectorFileWriter
-
+from datetime import datetime
 import os.path
 from yolov5 import YOLOv5
 
@@ -59,7 +59,7 @@ import sqlite3
 import multiprocessing
 
 class WorkerInference(QThread):
-    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos):
+    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos, db):
         QThread.__init__(self)
         self.stp = False
         self.plugin_dir = plugin_dir
@@ -73,6 +73,7 @@ class WorkerInference(QThread):
         self.weight = weight
         self.is_pontos = is_pontos
         self.is_poligonos = is_poligonos
+        self.db = db
 
 
     up_list = pyqtSignal(list)
@@ -80,12 +81,29 @@ class WorkerInference(QThread):
     def run(self):
         self.inference()
 
+    def savesqliteproc(self):
+        if os.name == 'posix':  # Sistema Unix/Linux
+            username = os.getenv('USER')
+        elif os.name == 'nt':  # Windows
+            username = os.getenv('USERNAME')
+        else:
+            username = None
+        data_hora_atual = datetime.now()
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+        c.execute('PRAGMA journal_mode=wal')
+        c.execute(f"""INSERT INTO procs(date_start,date_finish,status,process,user)
+                     VALUES('{data_hora_atual}',null,'PEND',0,'{username}')""")
+        conn.commit()
+        c.close()
+        conn.close()
+
     def inference(self):
         print("ok")
         if not self.stp:
-            # set model params
-            # model_path = "yolov5/weights/yolov5s.pt" # it automatically downloads yolov5s model to given path
 
+            #Create proc db
+            self.savesqliteproc()
 
             self.device = "cpu"  # or "cpu"
             #self.weight = None
@@ -188,7 +206,9 @@ class WorkerInference(QThread):
                         QgsProject.instance().addMapLayers([self.polygon])
                         if (self.dlg.cb_pontos.isChecked()):
                             QgsProject.instance().addMapLayers([self.point])
-                #PROCESSAR DIRETÓRIO
+
+
+                #PROCESSAR DIRETÓRIO###########################################################
                 elif (self.file_folder_status == 0):
                     #images = [os.path.basename(x) for x in os.listdir(self.img_dir)]
 
@@ -316,11 +336,12 @@ class AIGIS:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = self.gctools.plugin_dir
-
+        self.db = None
         
     def updateBar(self,data):
         print(data)
         self.dlg.gcbar_geral.value = int(data[0])
+        QgsExpressionContextUtils.setGlobalVariable( 'aigis_status',50)
     def setworker(self):
 
         self.create_results_layers()
@@ -375,7 +396,8 @@ class AIGIS:
                                                  confidence,
                                                  overlap,
                                                  is_pontos,
-                                                 is_poligonos)
+                                                 is_poligonos,
+                                                 self.db)
 
         self.worker_inferencer.up_list.connect(self.updateBar)
         self.worker_inferencer.results.connect(self.addfeature2layer)
@@ -567,15 +589,37 @@ class AIGIS:
         self.point.updateFields()
         self.point.commitChanges()
         self.point.startEditing()
+    def create_tables(self,db):
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+        c.execute('PRAGMA journal_mode=wal')
+        c.execute("""CREATE TABLE IF NOT EXISTS data_proc(
+                                          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                          proc_id integer NOT NULL,
+                                          folder text,
+                                          image text,
+                                          status text,
+                                          process integer,
+                                          date datetime,
+                                          user text,
+                                          FOREIGN KEY(proc_id) REFERENCES procs(id))""")
+        c.execute("""CREATE TABLE IF NOT EXISTS procs(
+                                             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                             date_start datetime,
+                                             date_finish datetime,
+                                             status text,
+                                             process integer,
+                                             user text)""")
+        c.close()
+        conn.close()
 
     def saveproject(self):
         qwidget = QWidget()
         savedirname, _ = QFileDialog.getSaveFileName(
             qwidget, "Save project", "", " SQLite (*.sqlite)")
         if savedirname:
-            conn = sqlite3.connect(savedirname)
-            c = conn.cursor()
-            c.execute('PRAGMA journal_mode=wal')
+            self.create_tables(savedirname)
+        self.db = savedirname
 
     def openproject(self):
         qfd = QFileDialog()
@@ -583,10 +627,8 @@ class AIGIS:
         openeddirname = QFileDialog.getOpenFileName(qfd, "Open project", "", filter)[0]
 
         if openeddirname:
-            conn = sqlite3.connect(openeddirname)
-            c = conn.cursor()
-            c.execute('PRAGMA journal_mode=wal')
-
+            self.create_tables(openeddirname)
+        self.db = openeddirname
     def setmemoryoutput(self):
         if self.dlg.cb_memory.isChecked():
             self.dlg.ln_output.setText("[Memory Output]")
@@ -600,6 +642,7 @@ class AIGIS:
                     return
             else:
                 self.dlg.ln_output.setText("")
+
 
     def setoutput(self):
         qwidget = QWidget()
