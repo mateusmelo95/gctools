@@ -492,21 +492,13 @@ class AIGIS:
             output = self.dlg.ln_output.displayText()
             dir = os.path.dirname(output)
             name = os.path.basename(output).replace(".shp","")
-            out_a = os.path.join(dir,name+"_p.shp")
-            out_p = os.path.join(dir,name+"_a.shp")
+            out_a = os.path.join(dir,name+"_a.shp")
+            out_p = os.path.join(dir,name+"_p.shp")
             polygon = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(self.epsg), name+"_a",
                                           "memory")
             point = QgsVectorLayer('Point?crs=epsg:{}&index=yes'.format(self.epsg), name+"_p",
                                         "memory")
 
-            self.pr = polygon.dataProvider()
-            self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                              QgsField("classe_id", QVariant.Int),
-                              QgsField("score", QVariant.Double)])
-            self.pr_p = point.dataProvider()
-            self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                                QgsField("classe_id", QVariant.Int),
-                                QgsField("score", QVariant.Double)])
 
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.driverName = 'ESRI Shapefile'
@@ -515,11 +507,18 @@ class AIGIS:
             QgsVectorFileWriter.writeAsVectorFormatV3(polygon, out_a, context, options)
             QgsVectorFileWriter.writeAsVectorFormatV3(point, out_p, context, options)
 
+            self.polygon = QgsVectorLayer(out_a, name+"_p.shp", "ogr")
+            self.point = QgsVectorLayer(out_p, name+"_a.shp", "ogr")
 
+            self.pr = self.polygon.dataProvider()
+            self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                                   QgsField("classe_id", QVariant.Int),
+                                   QgsField("score", QVariant.Double)])
 
-            self.polygon = QgsVectorLayer(out_p, name+"_p.shp", "ogr")
-            self.point = QgsVectorLayer(out_a, name+"_a.shp", "ogr")
-
+            self.pr_p = self.point.dataProvider()
+            self.pr_p.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
+                                     QgsField("classe_id", QVariant.Int),
+                                     QgsField("score", QVariant.Double)])
             QgsProject.instance().addMapLayers([self.point])
             #if (self.dlg.cb_poligonos.isChecked()):
             QgsProject.instance().addMapLayers([self.polygon])
