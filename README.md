@@ -16,7 +16,7 @@ O GC Tools é um plugin Qgis feito para a utilização de ia para detecção de 
 
 ## Instalação
 
-Você pode instalar as dependências executando o seguinte comando no propt do OSGeoShell:
+Você pode instalar as dependências executando o seguinte comando no propt do OSGeoShell do Qgis:
 
 ```bash
 pip install yolov5
