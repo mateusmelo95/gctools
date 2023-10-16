@@ -24,9 +24,9 @@
 import os
 import sys 
 sys.path.append(os.path.join(os.path.dirname(__file__),'lib'))
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant, QTimer
 from qgis.PyQt.QtGui import QIcon, QColor, QPixmap
-from qgis.PyQt.QtWidgets import QWidget, QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout
+from qgis.PyQt.QtWidgets import QWidget, QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QDialog, QPushButton, QProgressBar
 #from PyQt5.QtCore import QVariant
 # Initialize Qt resources from file resources.py
 #from .resources import *
@@ -59,7 +59,7 @@ import sqlite3
 import multiprocessing
 
 class WorkerInference(QThread):
-    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos, db, proc_id):
+    def __init__(self, plugin_dir, weight, file_folder_status, img_dir, images, img_size, is_slice, confidence, overlap, is_pontos, is_poligonos, db, proc_id, status):
         QThread.__init__(self)
         self.stp = False
         self.plugin_dir = plugin_dir
@@ -75,12 +75,14 @@ class WorkerInference(QThread):
         self.is_poligonos = is_poligonos
         self.db = db
         self.proc_id = proc_id
+        self.status_list = status
+
 
 
     up_list = pyqtSignal(list)
     results = pyqtSignal(list)
 
-    def updatesqlitedata(self,id_proces,process,image):
+    def updatesqlitedata(self,id_proces,process,image,total):
         data_hora_atual = datetime.now()
 
         self.c.execute('PRAGMA journal_mode=wal')
@@ -91,6 +93,9 @@ class WorkerInference(QThread):
                              WHERE proc_id = {id_proces}
                              AND image = '{image}'
                             """)
+        #.c.execute(f"""UPDATE procs
+        #                 SET process = {total}
+        #                 wHERE id = {id_proces}""")
 
         self.conn.commit()
 
@@ -105,7 +110,7 @@ class WorkerInference(QThread):
             self.conn = sqlite3.connect(self.db)
             self.c = self.conn.cursor()
 
-            self.device = "cpu"  # or "cpu"
+            self.device = 'cuda:0'#"cpu"  # or "cpu"
             #self.weight = None
 
             if self.is_slice:
@@ -118,7 +123,7 @@ class WorkerInference(QThread):
                     model_type='yolov5',
                     model_path=self.weight,
                     confidence_threshold=float(self.confidence),
-                    device="cpu",  # or 'cuda:0'
+                    device=self.device,  # or 'cuda:0'
                 )
 
                 if (self.file_folder_status == 1):
@@ -267,10 +272,11 @@ class WorkerInference(QThread):
 
 
                             # print(geom)
-                        print(i+1)
-                        print([int(100*(i+1)/total)])
-                        self.up_list.emit([int(100*(i+1)/total)])
-                        self.updatesqlitedata(self.proc_id,int(100*(i+1)/total),img)
+                        #print(i+1)
+                        #print([int(100*(i+1)/total)])
+
+                        self.up_list.emit([self.proc_id,int(100*(i+1)/total)])
+                        self.updatesqlitedata(self.proc_id,int(100),img,int(100*(i+1)/total))
 
             else:
                 self.yolov5 = YOLOv5(self.weight, self.device)
@@ -340,19 +346,32 @@ class AIGIS:
         self.db = None
         
     def updateBar(self,data):
-        print(data)
-        self.dlg.gcbar_geral.value = int(data[0])
-        QgsExpressionContextUtils.setGlobalVariable( 'aigis_status',50)
+        #print(data[1])
+        self.dlg.gcbar_geral.value = int(data[1])
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+        c.row_factory = sqlite3.Row
+        c.execute(f"""UPDATE procs
+                     SET process = {data[1]}
+                    WHERE id = {data[0]}""")
+        conn.commit()
+
+        #QgsExpressionContextUtils.setGlobalVariable( 'aigis_status',50)
     def setworker(self):
 
         self.create_results_layers()
         #get images
         images = []
         dirs = []
+        status = []
+        #process = []
         for row in range(0, self.dlg.table.rowCount()):
             images.append(self.dlg.table.item(row, 2).text())
             img_dir = self.dlg.table.item(row, 1).text()
             dirs.append(img_dir)
+            status.append(self.dlg.table.item(row, 3).text())
+            #process.append(self.dlg.table.item(row, 4).text())
+
 
 
         #get model_path
@@ -405,7 +424,8 @@ class AIGIS:
                                                  is_pontos,
                                                  is_poligonos,
                                                  self.db,
-                                                 self.id_proc)
+                                                 self.id_proc,
+                                                 status )
 
         self.worker_inferencer.up_list.connect(self.updateBar)
         self.worker_inferencer.results.connect(self.addfeature2layer)
@@ -537,8 +557,8 @@ class AIGIS:
             QgsVectorFileWriter.writeAsVectorFormatV3(polygon, out_a, context, options)
             QgsVectorFileWriter.writeAsVectorFormatV3(point, out_p, context, options)
 
-            self.polygon = QgsVectorLayer(out_a, name+"_p.shp", "ogr")
-            self.point = QgsVectorLayer(out_p, name+"_a.shp", "ogr")
+            self.polygon = QgsVectorLayer(out_a, name+"_p", "ogr")
+            self.point = QgsVectorLayer(out_p, name+"_a", "ogr")
 
             self.pr = self.polygon.dataProvider()
             self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
@@ -636,6 +656,129 @@ class AIGIS:
         if openeddirname:
             self.create_tables(openeddirname)
         self.db = openeddirname
+        self.dlg.label_sqlite.setText(os.path.basename(self.db))
+
+        self.dlg_monitorate = QDialog()
+        self.dlg_monitorate.setWindowTitle(os.path.basename(self.db))
+        self.layout_mon = QGridLayout()
+        self.pb_mon_proc = QPushButton(text='Processar')
+        self.pb_mon_proc.pressed.connect(self.mon_proc)
+        self.pb_mon_mon = QPushButton(text='Monitorar')
+        self.pb_mon_mon.pressed.connect(self.mon_mon)
+        self.layout_mon.addWidget(self.pb_mon_proc,0,0)
+        self.layout_mon.addWidget(self.pb_mon_mon,0,1)
+        self.dlg_monitorate.setLayout(self.layout_mon)
+        self.dlg_monitorate.show()
+
+    def mon_proc(self):
+        self.dlg.label_monitorar.setText("PROCESSANDO:")
+        self.dlg_monitorate.close()
+    def mon_mon(self):
+        self.dlg.label_monitorar.setText("MONITORANDO:")
+        self.dlg_monitorate.close()
+        self.settimer_mon()
+
+    def settimer_mon(self):
+        self.timer_mon = QTimer()
+        self.timer_mon.setInterval(5000)
+        self.timer_mon.timeout.connect(self.update_mon)
+        self.timer_mon.start()
+    def setouttimer_mon(self):
+        self.timer_mon.stop()
+    def update_mon(self):
+        #get metrics
+        #print("update mon")
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+        c.row_factory = sqlite3.Row
+        c.execute("""SELECT a.* FROM data_proc a
+                     JOIN procs b
+                     ON a.proc_id = b.id
+                     WHERE b.id = (SELECT max(id) FROM procs)""")
+        conn.commit()
+        data = c.fetchall()
+
+        self.dlg.table.setRowCount(0)
+        for row in data:
+            #print(row['proc_id'])
+            id = row['id']
+            proc_id = row['proc_id']
+            folder = row['folder']
+            image = row['image']
+            status = row['status']
+            process = row['process']
+
+            row = self.dlg.table.rowCount()
+
+            color_pend = QColor()
+            color_pend.setRgb(89, 141, 214)
+            icon_pend = QIcon()
+            icon_pend.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "pend.png")), QIcon.Normal, QIcon.Off)
+
+            color_finished = QColor()
+            color_finished.setRgb(38, 230, 73)
+            icon_finished = QIcon()
+            icon_finished.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "finished.png")), QIcon.Normal, QIcon.Off)
+
+            color_problem = QColor()
+            color_problem.setRgb(237, 128, 138)
+            icon_problem = QIcon()
+            icon_problem.addPixmap(QPixmap(os.path.join(self.plugin_dir, "icons", "problem.png")), QIcon.Normal,QIcon.Off)
+
+
+            item_id = QTableWidgetItem()
+            item_id.setCheckState(2)
+            item_id.setText(str(id))
+
+            item_img_dir = QTableWidgetItem()
+            item_img_dir.setText(str(folder))
+
+            item_img = QTableWidgetItem()
+            item_img.setText(str(image))
+
+            item_status = QTableWidgetItem()
+            item_status.setText(str(status))
+            item_proc = QTableWidgetItem()
+            item_proc.setText(str(process))
+
+            if process:
+                if process<100:
+                    item_status.setIcon(icon_pend)
+                    item_status.setBackground(color_pend)
+                else:
+                    item_status.setIcon(icon_finished)
+                    item_status.setBackground(color_finished)
+            else:
+                item_status.setIcon(icon_pend)
+                item_status.setBackground(color_pend)
+
+            self.dlg.table.insertRow(row)
+            self.dlg.table.setItem(row, 0, item_id) #id
+            self.dlg.table.setItem(row, 1, item_img_dir) #pasta
+            self.dlg.table.setItem(row, 2, item_img) #imagem
+            self.dlg.table.setItem(row, 3, item_status) #status
+            if process:
+                self.progressbar = QProgressBar()
+                self.progressbar.setValue(process)
+                self.dlg.table.setCellWidget(row, 4, self.progressbar)
+            else:
+                self.progressbar = QProgressBar()
+                self.progressbar.setValue(0)
+                self.dlg.table.setCellWidget(row, 4, self.progressbar)
+
+
+
+        #conn.close()
+        #c.close()
+        c.execute(f"""SELECT process FROM procs
+                     WHERE id = {proc_id}""")
+        conn.commit()
+        data = c.fetchall()
+        for row in data:
+            process = row['process']
+        if process:
+            self.dlg.gcbar_geral.setValue(int(process))
+
     def setmemoryoutput(self):
         if self.dlg.cb_memory.isChecked():
             self.dlg.ln_output.setText("[Memory Output]")
@@ -697,6 +840,13 @@ class AIGIS:
         conn.commit()
         c.close()
         conn.close()
+
+    def CloseEvent(self, event):
+        print("closed")
+        try:
+            self.setouttimer_mon()
+        except:
+            pass
     def run(self):
         self.dlg = AIGISDialog()
         self.dlg.pb_inference.clicked.connect(self.setworker)
@@ -710,3 +860,4 @@ class AIGIS:
         self.dlg.actionAbrir.triggered.connect(self.openproject)
         self.dlg.cb_memory.toggled.connect(self.setmemoryoutput)
         self.dlg.pb_salvar.clicked.connect(self.setoutput)
+        self.dlg.closeEvent = self.CloseEvent

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>987</width>
-    <height>619</height>
+    <width>1109</width>
+    <height>598</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -99,15 +99,7 @@
             <property name="frameShadow">
              <enum>QFrame::Raised</enum>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout">
-             <item>
-              <widget class="QProgressBar" name="gcbar_geral">
-               <property name="value">
-                <number>0</number>
-               </property>
-              </widget>
-             </item>
-            </layout>
+            <layout class="QHBoxLayout" name="horizontalLayout"/>
            </widget>
           </item>
           <item row="0" column="3">
@@ -555,6 +547,13 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_7">
+       <item row="0" column="2">
+        <widget class="QLabel" name="label_sqlite">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QCheckBox" name="cb_sel_all">
          <property name="text">
@@ -562,14 +561,49 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QProgressBar" name="gcbar_partial">
-         <property name="value">
-          <number>0</number>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_monitorar">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Crie ou Abra um Projeto</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="1" column="0" colspan="3">
+        <widget class="QTableWidget" name="table">
+         <column>
+          <property name="text">
+           <string>id</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>folder</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>image</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>status</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>progress</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="3">
         <widget class="QFrame" name="frame_11">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
@@ -621,33 +655,11 @@
          </layout>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QTableWidget" name="table">
-         <column>
-          <property name="text">
-           <string>id</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>folder</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>image</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>status</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>progress</string>
-          </property>
-         </column>
+       <item row="2" column="0" colspan="3">
+        <widget class="QProgressBar" name="gcbar_geral">
+         <property name="value">
+          <number>0</number>
+         </property>
         </widget>
        </item>
       </layout>
@@ -660,7 +672,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>987</width>
+     <width>1109</width>
      <height>21</height>
     </rect>
    </property>
@@ -676,12 +688,12 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSalvar">
    <property name="text">
-    <string>Salvar</string>
+    <string>Criar Projeto</string>
    </property>
   </action>
   <action name="actionAbrir">
    <property name="text">
-    <string>Abrir</string>
+    <string>Abrir Projeto</string>
    </property>
   </action>
  </widget>
