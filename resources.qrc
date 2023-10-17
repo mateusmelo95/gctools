@@ -5,5 +5,7 @@
 		<file>icons/start_bg.png</file>
 		<file>icons/stop_bg.png</file>
 		<file>icons/aigis.png</file>
+		<file>icons/sample.png</file>
+		<file>icons/plus.png</file>
     </qresource>
 </RCC>

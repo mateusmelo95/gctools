@@ -39,6 +39,7 @@ from PIL import Image, ImageQt
 from functools import partial
 
 from .mods.ai_gis.ai_gis import AIGIS
+from .mods.sample.sample import SAMPLE
 from .mods.about.about_dialog import ABOUTDialog
 from .resources import *
 # Import the code for the dialog
@@ -105,8 +106,9 @@ class GCTOOLS:
         self.menuBar = self.iface.mainWindow().menuBar()
         self.menuBar.insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.menugc)
 
-        self.menuLogButton = self.createToolButton(self.toolbar, u'LOGIN', False)
+        #self.menuLogButton = self.createToolButton(self.toolbar, u'LOGIN', False)
         self.menuAiGisButton = self.createToolButton(self.toolbar, u'AIGIS', False)
+        self.menuSampleButton = self.createToolButton(self.toolbar, u'SAMPLE', False)
         self.toolbar.addSeparator()
         #self.menuROSButton = self.createToolButton(self.toolbar, u'ROS', False)
 
@@ -220,26 +222,6 @@ class GCTOOLS:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/gctools/icons/icon.png'
-        self.add_action(
-            icon_path,
-            text=self.tr(u'GC TOOLS'),
-            callback=self.run_gcsample,
-            parent=self.iface.mainWindow())
-
-        icon_path_log = ':/plugins/gctools/icons/login.png'
-        self.action_login = self.add_action(
-            icon_path_log,
-            text=u'Login',
-            callback=self.login,
-            #add_to_menu=False,
-            add_to_toolbar=False,
-            #withShortcut=False,
-            parentToolbar=self.menugc,
-            isCheckable=False
-        )
-        self.menuLogButton.addAction(self.action_login)
-        self.menuLogButton.setDefaultAction(self.action_login)
 
         icon_path_aigis = ':/plugins/gctools/icons/aigis.png'
         self.action_aigis = self.add_action(
@@ -255,6 +237,19 @@ class GCTOOLS:
         self.menuAiGisButton.addAction(self.action_aigis)
         self.menuAiGisButton.setDefaultAction(self.action_aigis)
 
+        icon_path_sample = ':/plugins/gctools/icons/sample.png'
+        self.action_sample = self.add_action(
+            icon_path_sample,
+            text=u'SAMPLE',
+            callback=self.run_gcsample,
+            # add_to_menu=False,
+            add_to_toolbar=False,
+            # withShortcut=False,
+            parentToolbar=self.menugc,
+            isCheckable=False
+        )
+        self.menuSampleButton.addAction(self.action_sample)
+        self.menuSampleButton.setDefaultAction(self.action_sample)
 
         # will be set False in run()
         self.first_start = True
@@ -283,73 +278,9 @@ class GCTOOLS:
     def run_gcsample(self):
         """Run method that performs all the real work"""
        
-        self.dlg = GCTOOLSDialog()
+        self.sample = SAMPLE(self.iface,self)
+        self.sample.run()
 
-        # show the dialog
-        #self.dlg.show()
-        try:
-            self.dock_gc.destroy()
-        except:
-            pass
-        self.canvas = self.iface.mapCanvas()
-        self.dock_gc = QDockWidget()
-
-        # Run the dialog event loop
-        self.dock_gc.setObjectName('GC Sample')
-        self.dock_gc.setWindowTitle('GC Sample')
-
-
-        # self.map_unidades.currentTextChanged.connect(self.changedMapUn)
-        #self.visibilityChanged.connect(self.close)
-        # self.setTitleText('dock_rev')
-        self.dock_gc.setAllowedAreas(Qt.RightDockWidgetArea)
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock_gc)
-
-        self.layout = QGridLayout()
-        r_ = 0
-        self.pixmap = QPixmap(':/plugins/gctools/icons/icon.png')
-        #self.pixmap.setFixedSize(50, 50)
-        self.label_logo = QLabel()
-        self.label_logo.setPixmap(self.pixmap.scaled(60, 60))
-
-        self.label_logo.setMaximumSize(60,60)
-        self.layout.addWidget(self.label_logo,r_,0,1,2)
-        r_+=1
-        self.label_layer_vias = QLabel("Layer Vias")
-        self.layout.addWidget(self.label_layer_vias,r_,0,1,2)
-        r_ += 1
-        self.map_layer_vias = QgsMapLayerComboBox()
-        self.map_layer_vias.setFilters(QgsMapLayerProxyModel.LineLayer)
-        self.layout.addWidget(self.map_layer_vias,r_,0,1,2)
-        r_ += 1
-        self.label_layer_pardais = QLabel("Layer Pardais")
-        self.layout.addWidget(self.label_layer_pardais,r_,0,1,2)
-        r_ += 1
-        self.map_layer_pardais = QgsMapLayerComboBox()
-        self.map_layer_pardais.setFilters(QgsMapLayerProxyModel.PointLayer)
-        self.layout.addWidget(self.map_layer_pardais,r_,0,1,2)
-        r_ += 1
-        self.pb_play = QPushButton()
-        self.icon_pb_play = QIcon(':/plugins/gctools/icons/start_bg.png')
-        #self.icon_pb_play.addPixmap(QImage(':/plugins/mmsd_gis/icons/start_icon.png'))
-        self.pb_play.setIcon(self.icon_pb_play)
-        self.pb_play.setIconSize(QSize(40, 40))
-        #self.pb_play.setFixedSize(QSize(20, 20))
-        self.pb_play.clicked.connect(self.start_loggin)
-        self.pb_stop = QPushButton()
-        self.icon_pb_stop = QIcon(':/plugins/gctools/icons/stop_bg.png')
-        # self.icon_pb_play.addPixmap(QImage(':/plugins/mmsd_gis/icons/stop_icon.png'))
-        self.pb_stop.setIcon(self.icon_pb_stop)
-        self.pb_stop.setIconSize(QSize(40, 40))
-        # self.pb_play.setFixedSize(QSize(20, 20))
-        self.pb_stop.clicked.connect(self.stop_loggin)
-        self.layout.addWidget(self.pb_play,r_,0,1,1)
-        self.layout.addWidget(self.pb_stop,r_,1,1,1)
-
-
-        self.wd = QWidget()
-        self.wd.setLayout(self.layout)
-        self.dock_gc.setWidget(self.wd)
 
     def run_ai_gis(self):
         self.ai_gis = AIGIS(self.iface,self)
@@ -358,7 +289,7 @@ class GCTOOLS:
     def signal_worker(self,data):
         print("teste_signal",data)
 
-    def start_loggin(self):
+    def start_worker(self):
         print("loggin") #
         self.worker = Worker(self.plugin_dir,self.iface)
         self.worker.stp = False
@@ -366,6 +297,6 @@ class GCTOOLS:
         self.worker.start()
 
 
-    def stop_loggin(self):
+    def stop_worker(self):
         print("stopped loggin")
         self.worker.stp = True

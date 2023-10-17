@@ -557,8 +557,8 @@ class AIGIS:
             QgsVectorFileWriter.writeAsVectorFormatV3(polygon, out_a, context, options)
             QgsVectorFileWriter.writeAsVectorFormatV3(point, out_p, context, options)
 
-            self.polygon = QgsVectorLayer(out_a, name+"_p", "ogr")
-            self.point = QgsVectorLayer(out_p, name+"_a", "ogr")
+            self.polygon = QgsVectorLayer(out_a, name+"_a", "ogr")
+            self.point = QgsVectorLayer(out_p, name+"_p", "ogr")
 
             self.pr = self.polygon.dataProvider()
             self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
