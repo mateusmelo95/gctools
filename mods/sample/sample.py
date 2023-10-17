@@ -89,9 +89,41 @@ class SAMPLE:
 
         self.label_logo.setMaximumSize(60, 60)
         self.layout.addWidget(self.label_logo, r_, 0, 1, 2)
+
+
+        r_ += 1
+        self.label_project1 = QLabel(text='Sem projeto')
+        self.layout.addWidget(self.label_project1, r_, 0, 1, 1)
+        self.label_project2 = QLabel()
+        self.layout.addWidget(self.label_project2, r_, 1, 1, 1)
+        r_ += 1
+        self.pb_addrow = QPushButton()
+        self.icon_pb_addrow = QIcon(':/plugins/gctools/icons/plus.png')
+        # self.icon_pb_play.addPixmap(QImage(':/plugins/mmsd_gis/icons/start_icon.png'))
+        self.pb_addrow.setIcon(self.icon_pb_addrow)
+        self.pb_addrow.setIconSize(QSize(15, 15))
+        # self.pb_play.setFixedSize(QSize(20, 20))
+        self.pb_addrow.clicked.connect(self.addrow)
+        self.layout.addWidget(self.pb_addrow, r_, 0, 1, 1)
+
+        self.pb_save = QPushButton()
+        self.icon_pb_save = QIcon(':/plugins/gctools/icons/save.png')
+        # self.icon_pb_play.addPixmap(QImage(':/plugins/mmsd_gis/icons/start_icon.png'))
+        self.pb_save.setIcon(self.icon_pb_save)
+        self.pb_save.setIconSize(QSize(15, 15))
+        # self.pb_play.setFixedSize(QSize(20, 20))
+        self.pb_save.clicked.connect(self.saveclasses)
+        self.layout.addWidget(self.pb_save, r_, 1, 1, 1)
+        r_ += 1
+        self.tableclasses = QTableWidget()
+        self.tableclasses.setColumnCount(2)
+        self.tableclasses.setHorizontalHeaderLabels(["id", "Classe"])
+        self.tableclasses.setSelectionBehavior(QTableWidget.SelectRows)
+        self.layout.addWidget(self.tableclasses, r_, 0, 1, 2)
         r_ += 1
         self.label_layer_samples = QLabel("Layer Amostras")
         self.layout.addWidget(self.label_layer_samples, r_, 0, 1, 2)
+
         r_ += 1
         self.map_layer_samples = QgsMapLayerComboBox()
         self.map_layer_samples.setFilters(QgsMapLayerProxyModel.PolygonLayer)
@@ -118,6 +150,37 @@ class SAMPLE:
         self.wd.setLayout(self.layout)
         self.dock_gc.setWidget(self.wd)
 
+        self.importclasses()
+
+    def importclasses_s(self):
+        qfd = QFileDialog()
+        filter = "SQLite (*.sqlite)"
+        openeddirname = QFileDialog.getOpenFileName(qfd, "Open project", "", filter)[0]
+
+        if openeddirname:
+            self.filltableclasses()
+        self.db = openeddirname
+        self.label_project1.setText("Projeto:")
+        self.label_project2.setText(os.path.basename(self.db))
+        self.dlg_open_classes.close()
+    def importclasses_n(self):
+        self.dlg_open_classes.close()
+    def importclasses(self):
+        self.dlg_open_classes = QDialog()
+        self.dlg_open_classes.setWindowTitle("Abrir projeto")
+        self.layout_open_classes = QGridLayout()
+        self.pb_open_classes_sim = QPushButton(text='Sim')
+        self.pb_open_classes_sim.pressed.connect(self.importclasses_s)
+        self.pb_open_classes_nao = QPushButton(text='Não')
+        self.pb_open_classes_nao.pressed.connect(self.importclasses_n)
+        self.layout_open_classes.addWidget(self.pb_open_classes_sim, 0, 0)
+        self.layout_open_classes.addWidget(self.pb_open_classes_nao, 0, 1)
+        self.dlg_open_classes.setLayout(self.layout_open_classes)
+        self.dlg_open_classes.show()
+    def saveclasses(self):
+        print("saving classes!")
+    def addrow(self):
+        self.tableclasses.setRowCount(self.tableclasses.rowCount() + 1)
     def create_layer_sample_memory(self):
         # create layer if not exists
         self.epsg = QgsProject.instance().crs().postgisSrid()
@@ -181,6 +244,8 @@ class SAMPLE:
             self.dlg_layer.setLayout(self.layout_layer)
             self.dlg_layer.show()
 
+    def filltableclasses(self):
+        pass
     def start_draw(self):
         self.verify_layer_sample()
 

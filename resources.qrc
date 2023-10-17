@@ -7,5 +7,6 @@
 		<file>icons/aigis.png</file>
 		<file>icons/sample.png</file>
 		<file>icons/plus.png</file>
+		<file>icons/save.png</file>
     </qresource>
 </RCC>
