@@ -178,7 +178,7 @@ class SAMPLE:
         self.dlg_open_classes.setLayout(self.layout_open_classes)
         self.dlg_open_classes.show()
     def saveclasses(self):
-        print("saving classes!")
+        print("saving classes!")#
     def addrow(self):
         self.tableclasses.setRowCount(self.tableclasses.rowCount() + 1)
     def create_layer_sample_memory(self):
