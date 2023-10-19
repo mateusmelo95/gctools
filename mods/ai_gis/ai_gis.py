@@ -852,8 +852,8 @@ class AIGIS:
 
             # Percorra as linhas do QTableWidget
             for row in range(self.dlg.table.rowCount()):
-                diretorio = self.dlg.table.item(row, 0)  # Coluna "folder"
-                nome_arquivo = self.dlg.table.item(row, 1)  # Coluna "image"
+                diretorio = self.dlg.table.item(row, 1)  # Coluna "folder"
+                nome_arquivo = self.dlg.table.item(row, 2)  # Coluna "image"
 
                 # Verifique se há diretório e nome de arquivo válidos
                 if diretorio and nome_arquivo:
