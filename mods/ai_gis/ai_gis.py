@@ -888,7 +888,7 @@ class AIGIS:
                     print(ext)
 
                     extensao = QgsGeometry.fromRect(ext)
-
+                    print(extensao)
                     # Adicione o polígono à camada vetorial
                     feature = QgsFeature()
                     feature.setGeometry(extensao)
