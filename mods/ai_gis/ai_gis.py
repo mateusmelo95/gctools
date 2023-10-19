@@ -860,26 +860,19 @@ class AIGIS:
                     diretorios.append(diretorio.text())
                     nomes_arquivos.append(nome_arquivo.text())
 
+            raster1 = gdal.Open(os.path.join(diretorios[0], nomes_arquivos[0]), gdal.GA_ReadOnly)
+            proj = osr.SpatialReference(wkt=raster1.GetProjection())
+            crs_raster = int(proj.GetAttrValue('AUTHORITY', 1))
+
+            camada_vetorial = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(crs_raster), "extensao_rasters",
+                                             "memory")
+            camada_vetorial.startEditing()
+
+            pr = camada_vetorial.dataProvider()
+            pr.addAttributes([QgsField("Imagem", QVariant.String)])
+
             # Verifique se há pelo menos um arquivo válido
             if diretorios and nomes_arquivos:
-                # Crie uma camada vetorial de polígonos com o CRS do primeiro arquivo raster
-
-                raster1 = gdal.Open(os.path.join(diretorios[0], nomes_arquivos[0]), gdal.GA_ReadOnly)
-                proj = osr.SpatialReference(wkt=raster1.GetProjection())
-                crs_raster = int(proj.GetAttrValue('AUTHORITY', 1))
-
-
-                camada_vetorial = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(crs_raster), "extensao_rasters", "memory")
-                camada_vetorial.startEditing()
-
-                # Adicione um campo para a camada vetorial
-                #campos = camada_vetorial.fields()
-                #campo = QgsField("Imagem", QVariant.String)
-                #campos.append(campo)
-                #camada_vetorial.updateFields()
-
-                pr = camada_vetorial.dataProvider()
-                pr.addAttributes([QgsField("Imagem", QVariant.String)])
 
                 # Percorra os diretórios e nomes de arquivos e crie polígonos para cada extensão
                 for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
@@ -894,6 +887,7 @@ class AIGIS:
                     feature.setGeometry(extensao)
                     feature.setAttributes([nome_arquivo.replace(".tif","")])
                     camada_vetorial.addFeature(feature)
+                    print(feature)
 
                 camada_vetorial.commitChanges()
 
