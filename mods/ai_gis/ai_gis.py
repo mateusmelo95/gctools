@@ -887,7 +887,7 @@ class AIGIS:
                     ext = raster.extent()
                     print(ext)
 
-                    extensao = QgsGeometry.fromRect(QgsRectangle(ext))
+                    extensao = QgsGeometry.fromRect(ext)
 
                     # Adicione o polígono à camada vetorial
                     feature = QgsFeature()
