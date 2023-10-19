@@ -870,10 +870,13 @@ class AIGIS:
                 camada_vetorial.startEditing()
 
                 # Adicione um campo para a camada vetorial
-                campos = camada_vetorial.fields()
-                campo = QgsField("Imagem", QVariant.String)
-                campos.append(campo)
-                camada_vetorial.updateFields()
+                #campos = camada_vetorial.fields()
+                #campo = QgsField("Imagem", QVariant.String)
+                #campos.append(campo)
+                #camada_vetorial.updateFields()
+
+                pr = camada_vetorial.dataProvider()
+                pr.addAttributes([QgsField("Imagem", QVariant.String)])
 
                 # Percorra os diretórios e nomes de arquivos e crie polígonos para cada extensão
                 for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
