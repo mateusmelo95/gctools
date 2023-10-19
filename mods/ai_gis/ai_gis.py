@@ -863,10 +863,13 @@ class AIGIS:
             # Verifique se há pelo menos um arquivo válido
             if diretorios and nomes_arquivos:
                 # Crie uma camada vetorial de polígonos com o CRS do primeiro arquivo raster
-                primeiro_raster = QgsRasterLayer(os.path.join(diretorios[0], nomes_arquivos[0]))
-                crs_raster = primeiro_raster.crs()
 
-                camada_vetorial = QgsVectorLayer("Polygon?crs=" + crs_raster.authid(), "extensao_rasters", "memory")
+                raster1 = gdal.Open(os.path.join(diretorios[0], nomes_arquivos[0]), gdal.GA_ReadOnly)
+                proj = osr.SpatialReference(wkt=raster1.GetProjection())
+                crs_raster = int(proj.GetAttrValue('AUTHORITY', 1))
+
+
+                camada_vetorial = QgsVectorLayer('Polygon?crs=epsg:{}&index=yes'.format(crs_raster), "extensao_rasters", "memory")
                 camada_vetorial.startEditing()
 
                 # Adicione um campo para a camada vetorial
@@ -882,6 +885,7 @@ class AIGIS:
                 for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
                     raster = QgsRasterLayer(os.path.join(diretorio,nome_arquivo))
                     ext = raster.extent()
+                    print(ext)
 
                     extensao = QgsGeometry.fromRect(QgsRectangle(ext))
 
