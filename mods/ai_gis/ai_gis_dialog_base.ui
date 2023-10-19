@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1109</width>
-    <height>598</height>
+    <height>658</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -673,7 +673,7 @@
      <x>0</x>
      <y>0</y>
      <width>1109</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuArquivo">
@@ -683,7 +683,14 @@
     <addaction name="actionSalvar"/>
     <addaction name="actionAbrir"/>
    </widget>
+   <widget class="QMenu" name="menuFerramenta">
+    <property name="title">
+     <string>Ferramentas</string>
+    </property>
+    <addaction name="actionBoxes"/>
+   </widget>
    <addaction name="menuArquivo"/>
+   <addaction name="menuFerramenta"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSalvar">
@@ -694,6 +701,11 @@
   <action name="actionAbrir">
    <property name="text">
     <string>Abrir Projeto</string>
+   </property>
+  </action>
+  <action name="actionBoxes">
+   <property name="text">
+    <string>Gerar Extensão das imagens</string>
    </property>
   </action>
  </widget>

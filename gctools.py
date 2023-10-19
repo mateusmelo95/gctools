@@ -109,6 +109,7 @@ class GCTOOLS:
         #self.menuLogButton = self.createToolButton(self.toolbar, u'LOGIN', False)
         self.menuAiGisButton = self.createToolButton(self.toolbar, u'AIGIS', False)
         self.menuSampleButton = self.createToolButton(self.toolbar, u'SAMPLE', False)
+
         self.toolbar.addSeparator()
         #self.menuROSButton = self.createToolButton(self.toolbar, u'ROS', False)
 
@@ -251,6 +252,7 @@ class GCTOOLS:
         self.menuSampleButton.addAction(self.action_sample)
         self.menuSampleButton.setDefaultAction(self.action_sample)
 
+
         # will be set False in run()
         self.first_start = True
 
@@ -301,3 +303,6 @@ class GCTOOLS:
     def stop_worker(self):
         print("stopped loggin")
         self.worker.stp = True
+
+    def run_box(self):
+        self.box_dlg = QDialog()

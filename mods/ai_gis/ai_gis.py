@@ -26,8 +26,10 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__),'lib'))
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant, QTimer
 from qgis.PyQt.QtGui import QIcon, QColor, QPixmap
-from qgis.PyQt.QtWidgets import QWidget, QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QDialog, QPushButton, QProgressBar
+from qgis.PyQt.QtWidgets import QMessageBox,QWidget, QAction, QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QDialog, QPushButton, QProgressBar
 #from PyQt5.QtCore import QVariant
+from qgis.core import QgsVectorLayer,QgsRasterLayer, QgsRectangle, QgsVectorFileWriter, QgsGeometry,QgsFields, QgsField, QgsFeature, QgsProject
+from qgis.PyQt.QtCore import QVariant
 # Initialize Qt resources from file resources.py
 #from .resources import *
 # Import the code for the dialog
@@ -37,6 +39,7 @@ from qgis.core import QgsVectorFileWriter
 from datetime import datetime
 import os.path
 from yolov5 import YOLOv5
+
 
 #from sahi.model import Yolov5DetectionModel
 from sahi import AutoDetectionModel
@@ -841,6 +844,53 @@ class AIGIS:
         c.close()
         conn.close()
 
+    def getboxes(self):
+        if self.dlg.table.rowCount()>0:
+            # Crie listas para armazenar diretórios e nomes de arquivos
+            diretorios = []
+            nomes_arquivos = []
+
+            # Percorra as linhas do QTableWidget
+            for row in range(self.dlg.table.rowCount()):
+                diretorio = self.dlg.table.item(row, 0)  # Coluna "folder"
+                nome_arquivo = self.dlg.table.item(row, 1)  # Coluna "image"
+
+                # Verifique se há diretório e nome de arquivo válidos
+                if diretorio and nome_arquivo:
+                    diretorios.append(diretorio.text())
+                    nomes_arquivos.append(nome_arquivo.text())
+
+            # Verifique se há pelo menos um arquivo válido
+            if diretorios and nomes_arquivos:
+                # Crie uma camada vetorial de polígonos com o CRS do primeiro arquivo raster
+                primeiro_raster = QgsRasterLayer(os.path.join(diretorios[0], nomes_arquivos[0]))
+                crs_raster = primeiro_raster.crs()
+
+                camada_vetorial = QgsVectorLayer("Polygon?crs=" + crs_raster.authid(), "extensao_rasters", "memory")
+                camada_vetorial.startEditing()
+
+                # Adicione um campo para a camada vetorial
+                campos = camada_vetorial.fields()
+                campo = QgsField("Imagem", QVariant.String)
+                campos.append(campo)
+                camada_vetorial.updateFields()
+
+                # Percorra os diretórios e nomes de arquivos e crie polígonos para cada extensão
+                for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
+                    extensao = QgsGeometry.fromRect(QgsRectangle(os.path.join(diretorio, nome_arquivo)))
+
+                    # Adicione o polígono à camada vetorial
+                    feature = QgsFeature()
+                    feature.setGeometry(extensao)
+                    feature.setAttributes([nome_arquivo.replace(".tif","")])
+                    camada_vetorial.addFeature(feature)
+
+                camada_vetorial.commitChanges()
+
+                # Adicione a camada vetorial à área de trabalho do QGIS
+                QgsProject.instance().addMapLayer(camada_vetorial)
+
+
     def CloseEvent(self, event):
         print("closed")
         try:
@@ -858,6 +908,7 @@ class AIGIS:
         self.dlg.show()
         self.dlg.actionSalvar.triggered.connect(self.saveproject)
         self.dlg.actionAbrir.triggered.connect(self.openproject)
+        self.dlg.actionBoxes.triggered.connect(self.getboxes)
         self.dlg.cb_memory.toggled.connect(self.setmemoryoutput)
         self.dlg.pb_salvar.clicked.connect(self.setoutput)
         self.dlg.closeEvent = self.CloseEvent
