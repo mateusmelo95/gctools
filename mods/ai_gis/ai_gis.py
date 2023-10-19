@@ -886,7 +886,9 @@ class AIGIS:
                     feature = QgsFeature()
                     feature.setGeometry(extensao)
                     feature.setAttributes([nome_arquivo.replace(".tif","")])
-                    camada_vetorial.addFeature(feature)
+                    #camada_vetorial.addFeature(feature)
+                    pr.addFeatures([feature])
+                    camada_vetorial.updateExtents()
                     print(feature)
 
                 camada_vetorial.commitChanges()
