@@ -877,7 +877,10 @@ class AIGIS:
 
                 # Percorra os diretórios e nomes de arquivos e crie polígonos para cada extensão
                 for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
-                    extensao = QgsGeometry.fromRect(QgsRectangle(os.path.join(diretorio, nome_arquivo)))
+                    raster = QgsRasterLayer(os.path.join(diretorio,nome_arquivo))
+                    ext = raster.extent()
+
+                    extensao = QgsGeometry.fromRect(QgsRectangle(ext))
 
                     # Adicione o polígono à camada vetorial
                     feature = QgsFeature()
