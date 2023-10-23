@@ -131,6 +131,15 @@ class SAMPLE:
         self.map_layer_samples = QgsMapLayerComboBox()
         self.map_layer_samples.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.layout.addWidget(self.map_layer_samples, r_, 0, 1, 2)
+
+        r_ += 1
+        self.label_layer_imagem = QLabel("Layer Imagem")
+        self.layout.addWidget(self.label_layer_imagem, r_, 0, 1, 2)
+
+        r_ += 1
+        self.map_layer_imagem = QgsMapLayerComboBox()
+        self.map_layer_imagem.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.layout.addWidget(self.map_layer_imagem, r_, 0, 1, 2)
         r_ += 1
         self.pb_addpoly = QPushButton()
         self.icon_pb_addpoly = QIcon(':/plugins/gctools/icons/plus.png')
@@ -226,7 +235,7 @@ class SAMPLE:
                                       "memory")
 
         self.pr = self.samples.dataProvider()
-        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String)])
+        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String),QgsField("Imagem",QVariant.String)])
 
         QgsProject.instance().addMapLayers([self.samples])
         self.map_layer_samples.setLayer(self.samples)
@@ -258,7 +267,7 @@ class SAMPLE:
             self.samples = QgsVectorLayer(out_a, "amostras_a", "ogr")
 
             self.pr = self.samples.dataProvider()
-            self.pr.addAttributes([QgsField("id", QVariant.Int),QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String)])
+            self.pr.addAttributes([QgsField("id", QVariant.Int),QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String),QgsField("Imagem",QVariant.String)])
 
             QgsProject.instance().addMapLayers([self.samples])
             self.map_layer_samples.setLayer(self.samples)
@@ -287,6 +296,8 @@ class SAMPLE:
         self.iface.mapCanvas().setMapTool(rec_tool)
     def start_draw(self):
         self.verify_layer_sample()
+        if self.tableclasses.rowCount()>0:
+            self.tableclasses.selectRow(0)
         self.setcursor()
 
     def changeClasse(self):
@@ -374,6 +385,7 @@ class RubberBandRectangleTool(QgsMapTool):
         self.start_point = None
         self.sample = cls_main
         self.layer = self.sample.map_layer_samples.currentLayer()
+        self.raster = self.sample.map_layer_imagem.currentLayer()
 
     def canvasPressEvent(self, event):
         if event.button() == 1:  # Botão esquerdo do mouse
@@ -397,7 +409,9 @@ class RubberBandRectangleTool(QgsMapTool):
         rect = rubber.asGeometry()
         feature = QgsFeature()
         feature.setGeometry(rect)
-        feature.setAttributes(attrs)
+        at = attrs
+        at.append(self.raster.source())
+        feature.setAttributes(at)
         pr.addFeatures([feature])
         layer.updateExtents()
         layer.commitChanges()
