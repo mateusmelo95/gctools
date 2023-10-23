@@ -878,10 +878,10 @@ class AIGIS:
                 for diretorio, nome_arquivo in zip(diretorios, nomes_arquivos):
                     raster = QgsRasterLayer(os.path.join(diretorio,nome_arquivo))
                     ext = raster.extent()
-                    print(ext)
+                    #print(ext)
 
                     extensao = QgsGeometry.fromRect(ext)
-                    print(extensao)
+                    #print(extensao)
                     # Adicione o polígono à camada vetorial
                     feature = QgsFeature()
                     feature.setGeometry(extensao)
@@ -889,7 +889,7 @@ class AIGIS:
                     #camada_vetorial.addFeature(feature)
                     pr.addFeatures([feature])
                     camada_vetorial.updateExtents()
-                    print(feature)
+                    #print(feature)
 
                 camada_vetorial.commitChanges()
 
