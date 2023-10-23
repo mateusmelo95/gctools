@@ -8,7 +8,7 @@
                               -------------------
         begin                : 2023-10-06
         git sha              : $Format:%H$
-        copyright            : (C) 2021 by MMS
+        copyright            : (C) 2023 by MMS
         email                : mateusmelosiqueira@gmail.com
  ***************************************************************************/
 

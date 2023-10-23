@@ -40,6 +40,7 @@ from functools import partial
 
 from .mods.ai_gis.ai_gis import AIGIS
 from .mods.sample.sample import SAMPLE
+from .mods.datagen.datagen import DATAGEN
 from .mods.about.about_dialog import ABOUTDialog
 from .resources import *
 # Import the code for the dialog
@@ -109,6 +110,7 @@ class GCTOOLS:
         #self.menuLogButton = self.createToolButton(self.toolbar, u'LOGIN', False)
         self.menuAiGisButton = self.createToolButton(self.toolbar, u'AIGIS', False)
         self.menuSampleButton = self.createToolButton(self.toolbar, u'SAMPLE', False)
+        self.menuDatagenButton = self.createToolButton(self.toolbar, u'DataGen', False)
 
         self.toolbar.addSeparator()
         #self.menuROSButton = self.createToolButton(self.toolbar, u'ROS', False)
@@ -252,6 +254,20 @@ class GCTOOLS:
         self.menuSampleButton.addAction(self.action_sample)
         self.menuSampleButton.setDefaultAction(self.action_sample)
 
+        icon_path_data_gen = ':/plugins/gctools/icons/datagen.png'
+        self.action_data_gen = self.add_action(
+            icon_path_data_gen,
+            text=u'DATAGEN',
+            callback=self.run_gcdatagen,
+            # add_to_menu=False,
+            add_to_toolbar=False,
+            # withShortcut=False,
+            parentToolbar=self.menugc,
+            isCheckable=False
+        )
+        self.menuDatagenButton.addAction(self.action_data_gen)
+        self.menuDatagenButton.setDefaultAction(self.action_data_gen)
+
 
         # will be set False in run()
         self.first_start = True
@@ -283,7 +299,10 @@ class GCTOOLS:
         self.sample = SAMPLE(self.iface,self)
         self.sample.run()
 
-
+    def run_gcdatagen(self):
+        print("rundatagen")
+        self.datagen = DATAGEN(self.iface,self)
+        self.datagen.run()
 
     def run_ai_gis(self):
         self.ai_gis = AIGIS(self.iface,self)
