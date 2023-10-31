@@ -40,6 +40,7 @@ from functools import partial
 
 from .mods.ai_gis.ai_gis import AIGIS
 from .mods.sample.sample import SAMPLE
+from .mods.validation.validation import VALID
 from .mods.about.about_dialog import ABOUTDialog
 from .resources import *
 # Import the code for the dialog
@@ -109,6 +110,7 @@ class GCTOOLS:
         #self.menuLogButton = self.createToolButton(self.toolbar, u'LOGIN', False)
         self.menuAiGisButton = self.createToolButton(self.toolbar, u'AIGIS', False)
         self.menuSampleButton = self.createToolButton(self.toolbar, u'SAMPLE', False)
+        self.menuValidButton = self.createToolButton(self.toolbar, u'VALID', False)
 
         self.toolbar.addSeparator()
         #self.menuROSButton = self.createToolButton(self.toolbar, u'ROS', False)
@@ -252,6 +254,20 @@ class GCTOOLS:
         self.menuSampleButton.addAction(self.action_sample)
         self.menuSampleButton.setDefaultAction(self.action_sample)
 
+        icon_path_valid = ':/plugins/gctools/icons/valid.png'
+        self.action_valid = self.add_action(
+            icon_path_valid,
+            text=u'VALID',
+            callback=self.run_validation,
+            # add_to_menu=False,
+            add_to_toolbar=False,
+            # withShortcut=False,
+            parentToolbar=self.menugc,
+            isCheckable=False
+        )
+        self.menuValidButton.addAction(self.action_valid)
+        self.menuValidButton.setDefaultAction(self.action_valid)
+
 
         # will be set False in run()
         self.first_start = True
@@ -288,6 +304,10 @@ class GCTOOLS:
     def run_ai_gis(self):
         self.ai_gis = AIGIS(self.iface,self)
         self.ai_gis.run()
+
+    def run_validation(self):
+        self.valid_samples = VALID(self.iface,self)
+        self.valid_samples.run()
 
     def signal_worker(self,data):
         print("teste_signal",data)
