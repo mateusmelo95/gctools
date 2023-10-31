@@ -27,13 +27,14 @@ from qgis.PyQt.QtWidgets import QToolButton, QMenu, QLineEdit, QLabel, QDialog, 
 from qgis.PyQt.QtCore import QObject, Qt, QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
-from qgis.core import QgsWkbTypes, QgsGeometry, QgsPoint, QgsProject, QgsMapLayerProxyModel, QgsVectorLayer, QgsField, QgsVectorFileWriter
-from qgis.gui import QgsRubberBand, QgsMapLayerComboBox, QgsFieldComboBox
+from qgis.core import QgsProject, QgsLayerTreeLayer, QgsStyle, QgsProject, QgsCategorizedSymbolRenderer, QgsSymbol, QgsLineSymbol, QgsRendererCategory,QgsFeature, QgsField, QgsFeatureRequest,QgsWkbTypes, QgsGeometry, QgsPoint, QgsProject, QgsMapLayerProxyModel, QgsVectorLayer, QgsField, QgsVectorFileWriter, QgsRectangle
+from qgis.gui import QgsRubberBand, QgsMapLayerComboBox, QgsFieldComboBox,QgsMapTool, QgsMapCanvas
 from PyQt5.QtWidgets import QTabWidget, QFrame,QAbstractItemView,  QMessageBox, QShortcut, QFileDialog, QDockWidget, QComboBox, QLineEdit, QTableWidget, QTableWidgetItem, QCheckBox, QGridLayout, QLabel, QWidget, QSizePolicy,QSpacerItem, QPushButton
 from qgis.PyQt.QtCore import Qt, QSize, QVariant
 from qgis.PyQt.QtGui import QColor, QCursor, QPixmap, QIcon, QImage
 from PyQt5.QtCore import QThread, pyqtSignal
 import os
+import sqlite3
 # import osr
 import multiprocessing
 
@@ -59,7 +60,9 @@ class SAMPLE:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = self.gctools.plugin_dir
-
+        self.samples = None
+        self.classeatual = None
+        self.classeidatual = None
     def run(self):
         pass
 
@@ -90,7 +93,6 @@ class SAMPLE:
         self.label_logo.setMaximumSize(60, 60)
         self.layout.addWidget(self.label_logo, r_, 0, 1, 2)
 
-
         r_ += 1
         self.label_project1 = QLabel(text='Sem projeto')
         self.layout.addWidget(self.label_project1, r_, 0, 1, 1)
@@ -119,6 +121,7 @@ class SAMPLE:
         self.tableclasses.setColumnCount(2)
         self.tableclasses.setHorizontalHeaderLabels(["id", "Classe"])
         self.tableclasses.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tableclasses.itemSelectionChanged.connect(self.changeClasse)
         self.layout.addWidget(self.tableclasses, r_, 0, 1, 2)
         r_ += 1
         self.label_layer_samples = QLabel("Layer Amostras")
@@ -158,11 +161,25 @@ class SAMPLE:
         openeddirname = QFileDialog.getOpenFileName(qfd, "Open project", "", filter)[0]
 
         if openeddirname:
-            self.filltableclasses()
-        self.db = openeddirname
-        self.label_project1.setText("Projeto:")
-        self.label_project2.setText(os.path.basename(self.db))
+            self.db = openeddirname
+            self.label_project1.setText("Projeto:")
+            self.label_project2.setText(os.path.basename(self.db))
+
+            conn = sqlite3.connect(self.db)
+            c = conn.cursor()
+            c.row_factory = sqlite3.Row
+            c.execute('PRAGMA journal_mode=wal')
+            conn.commit()
+            data = c.execute("""SELECT id,classe
+                         FROM sample_classes""")
+            self.tableclasses.setRowCount(0)
+            for i,row in enumerate(data):
+                self.tableclasses.setRowCount(self.tableclasses.rowCount() + 1)
+                self.tableclasses.setItem(i, 0, QTableWidgetItem(str(row['id'])))  # id
+                self.tableclasses.setItem(i, 1, QTableWidgetItem(str(row['classe'])))  # pasta
+
         self.dlg_open_classes.close()
+
     def importclasses_n(self):
         self.dlg_open_classes.close()
     def importclasses(self):
@@ -178,7 +195,27 @@ class SAMPLE:
         self.dlg_open_classes.setLayout(self.layout_open_classes)
         self.dlg_open_classes.show()
     def saveclasses(self):
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+        c.row_factory = sqlite3.Row
         print("saving classes!")#
+        if self.tableclasses.rowCount()>0:
+            c.execute('PRAGMA journal_mode=wal')
+            c.execute("""CREATE TABLE IF NOT EXISTS sample_classes(
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                        classe text)""")
+
+            c.execute("""DELETE FROM sample_classes""")
+            for row in range(0, self.tableclasses.rowCount()):
+                item1 = self.tableclasses.item(row, 0)
+                item2 = self.tableclasses.item(row, 1)
+                if item1!=None and item1.text()!="" and item2!=None and item2.text()!="":
+                    id = self.tableclasses.item(row, 0).text()
+                    classe = self.tableclasses.item(row, 1).text()
+
+                    c.execute(f"""INSERT INTO sample_classes(id,classe)
+                                VALUES({id},'{classe}')""")
+                    conn.commit()
     def addrow(self):
         self.tableclasses.setRowCount(self.tableclasses.rowCount() + 1)
     def create_layer_sample_memory(self):
@@ -189,11 +226,11 @@ class SAMPLE:
                                       "memory")
 
         self.pr = self.samples.dataProvider()
-        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                               QgsField("classe_id", QVariant.Int)])
+        self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String)])
 
         QgsProject.instance().addMapLayers([self.samples])
         self.map_layer_samples.setLayer(self.samples)
+        #self.symbol_layer(self.samples, "classe_id")
         self.dlg_layer.close()
 
     def create_layer_sample_file(self):
@@ -221,11 +258,11 @@ class SAMPLE:
             self.samples = QgsVectorLayer(out_a, "amostras_a", "ogr")
 
             self.pr = self.samples.dataProvider()
-            self.pr.addAttributes([QgsField("id", QVariant.Int), QgsField("classe", QVariant.String),
-                                   QgsField("classe_id", QVariant.Int)])
+            self.pr.addAttributes([QgsField("id", QVariant.Int),QgsField("classe_id", QVariant.Int),QgsField("classe", QVariant.String)])
 
             QgsProject.instance().addMapLayers([self.samples])
             self.map_layer_samples.setLayer(self.samples)
+            #self.symbol_layer(self.samples, "classe_id")
             self.dlg_layer.close()
     def verify_layer_sample(self):
         layers = QgsProject.instance().mapLayersByName("amostras_a")
@@ -244,10 +281,142 @@ class SAMPLE:
             self.dlg_layer.setLayout(self.layout_layer)
             self.dlg_layer.show()
 
-    def filltableclasses(self):
-        pass
+    def setcursor(self):
+
+        rec_tool = RubberBandRectangleTool(self.iface.mapCanvas(),self)
+        self.iface.mapCanvas().setMapTool(rec_tool)
     def start_draw(self):
         self.verify_layer_sample()
+        self.setcursor()
+
+    def changeClasse(self):
+        selected_items = self.tableclasses.selectedItems()
+
+        if not selected_items:
+            return
+
+        selected_row = set()
+        for item in selected_items:
+            selected_row.add(item.row())
+
+        if len(selected_row) != 1:
+            return
+
+        row_index = selected_row.pop()
+        row_values = [self.tableclasses.item(row_index, col).text() for col in range(self.tableclasses.columnCount())]
+
+        self.classeidatual = row_values[0]
+        self.classeatual = row_values[1]
+
+    def symbol_layer(self,layer,atributo):
+
+        # Crie um símbolo de linha simples
+        symbol = QgsLineSymbol.createSimple({'color': 'red', 'width': '1'})
+        renderer = QgsCategorizedSymbolRenderer(atributo)
+
+        for i in range(10):
+            category = QgsRendererCategory(i, symbol, str(i))
+            renderer.addCategory(category)
+
+
+        # Aplique o renderizador à camada
+        layer.setRenderer(renderer)
+
+        # Atualize a representação da camada no mapa
+        layer.triggerRepaint()
+
+    def savelayerstyle(self,layer):
+
+        # Substitua "caminho_para_banco_de_dados.db" pelo caminho onde deseja salvar o banco de dados SQLite
+        caminho_banco_de_dados = os.path.join(self.plugin_dir,"utils","estilos.db")
+
+        # Estabeleça uma conexão com o banco de dados SQLite
+        conn = sqlite3.connect(caminho_banco_de_dados)
+
+        # Salve o estilo da camada no banco de dados
+        with conn:
+            # Crie uma representação do estilo da camada
+            style = QgsStyle().defaultStyle()
+            layer_tree_layer = QgsLayerTreeLayer(layer)
+            style_manager = QgsStyle().styleManager()
+            style_manager.setCurrentStyle(style)
+            style_manager.setCurrentLayer(layer_tree_layer)
+            style_blob = style_manager.currentStyle().asXML()
+
+            conn.execute("CREATE TABLE IF NOT EXISTS estilos (nome TEXT PRIMARY KEY, estilo BLOB)")
+            conn.execute("INSERT OR REPLACE INTO estilos (nome, estilo) VALUES (?, ?)", ("camada_estilo", style_blob))
+
+    def updatelayerstyle(self,layer,db):
+        outra_camada = layer
+
+        # Substitua "caminho_para_banco_de_dados.db" pelo caminho do banco de dados SQLite onde o estilo foi salvo
+        caminho_banco_de_dados = db
+
+        # Estabeleça uma conexão com o banco de dados SQLite
+        conn = sqlite3.connect(caminho_banco_de_dados)
+
+        # Recupere o estilo do banco de dados
+        with conn:
+            cursor = conn.execute("SELECT estilo FROM estilos WHERE nome = ?", ("camada_estilo",))
+            row = cursor.fetchone()
+            if row:
+                style_blob = row[0]
+
+                # Aplique o estilo à outra camada
+                style_manager = QgsStyle().styleManager()
+                style_manager.readFromLayer(outra_camada, style_blob)
+                outra_camada.triggerRepaint()
+class RubberBandRectangleTool(QgsMapTool):
+    def __init__(self, canvas,cls_main):
+        super(RubberBandRectangleTool, self).__init__(canvas)
+        self.canvas = canvas
+        self.rubber_band = None
+        self.start_point = None
+        self.sample = cls_main
+        self.layer = self.sample.map_layer_samples.currentLayer()
+
+    def canvasPressEvent(self, event):
+        if event.button() == 1:  # Botão esquerdo do mouse
+            self.start_point = self.toMapCoordinates(event.pos())
+            if not self.rubber_band:
+                self.rubber_band = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+            self.rubber_band.setToGeometry(QgsGeometry.fromRect(QgsRectangle(self.start_point, self.start_point)), None)
+            self.rubber_band.show()
+            print(self.rubber_band)
+
+    def canvasMoveEvent(self, event):
+        if self.start_point is not None:
+            current_point = self.toMapCoordinates(event.pos())
+            rect = QgsRectangle(self.start_point, current_point)
+            self.rubber_band.setToGeometry(QgsGeometry.fromRect(rect), None)
+
+    def addpoly2layer(self,layer,rubber,attrs):
+        layer.startEditing()
+        pr = layer.dataProvider()
+        #pr.addAttributes([QgsField("Imagem", QVariant.String)])
+        rect = rubber.asGeometry()
+        feature = QgsFeature()
+        feature.setGeometry(rect)
+        feature.setAttributes(attrs)
+        pr.addFeatures([feature])
+        layer.updateExtents()
+        layer.commitChanges()
+        self.rubber_band.reset()
+        #
+    def canvasReleaseEvent(self, event):
+        if event.button() == 1 and self.rubber_band:
+            self.addpoly2layer(self.sample.map_layer_samples.currentLayer(), self.rubber_band,[0,self.sample.classeidatual,self.sample.classeatual])
+            self.start_point = None
+            self.rubber_band = None
+            # self.rubber_band.reset()
+            #self.sample.savelayerstyle(self.sample.map_layer_samples.currentLayer())
+
+    #def deactivate(self):
+        #self.canvas.unsetMapTool(self)
+        #self.canvas.setCursor(Qt.ArrowCursor)
+
+
+
 
 
 

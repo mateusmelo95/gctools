@@ -19,9 +19,10 @@ O GC Tools é um plugin Qgis feito para a utilização de ia para detecção de 
 Você pode instalar as dependências executando o seguinte comando no propt do OSGeoShell do Qgis:
 
 ```bash
-pip install yolov5
-pip install sahi
+pip install yolov5==7.0.12
+pip install sahi==0.11.14
 ```
+*Obs: Testado na versão 3.28 do Qgis e nas versões citadas das dependencias
 
 1) Baixar o .zip do projeto;
 2) No Qgis, vá até "Complementos" > "Gerenciar e instalar" > "Instalar a partir do zip" e instale o gctools baixado;
