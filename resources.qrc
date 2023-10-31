@@ -9,5 +9,6 @@
 		<file>icons/plus.png</file>
 		<file>icons/save.png</file>
 		<file>icons/datagen.png</file>
+		<file>icons/valid.png</file>
     </qresource>
 </RCC>
