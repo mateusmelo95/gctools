@@ -1,6 +1,6 @@
 # GC Tools 1.0
 
-![Logo do GC Tools](https://lh3.googleusercontent.com/pw/ADCreHeq-XUc8tTtgEqLWLCia7LzhR8DwnFnDxVL_eWAMv8FOoVWD7XikZEurbuaDkIN01yaE_OjJV6_iuSaG__HBGHqdockfh0S6KyJbzx5RnZlA4sgtPSZGz4-azZbYg6stYuk5y2tzGN7XpzYaWDc85HI=w200-h200-s-no?authuser=0)
+![Logo do GC Tools]
 
 ## Descrição
 
